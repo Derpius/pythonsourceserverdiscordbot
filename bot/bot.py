@@ -61,7 +61,7 @@ class ServerCommands(commands.Cog):
 	async def removeConnection(self, ctx):
 		'''Removes this channel's connection to a source server'''
 
-		if ctx.channel.id not in JSON.keys(): await ctx.send("This channel isn't connected to a server")
+		if str(ctx.channel.id) not in JSON.keys(): await ctx.send("This channel isn't connected to a server"); return
 
 		del JSON[str(ctx.channel.id)]
 		await ctx.send("Connection removed successfully!")

@@ -36,8 +36,8 @@ class ServerCommands(commands.Cog):
 	'''Server commands to be used by anyone with manager server permissions'''
 
 	def __init__(self, bot):
-		self.pingServer.start() # PyLint sees this as an error, even though it's not
 		self.bot = bot
+		self.pingServer.start() # PyLint sees this as an error, even though it's not
 	
 	@commands.command()
 	@commands.has_permissions(manage_guild=True)
@@ -50,7 +50,7 @@ class ServerCommands(commands.Cog):
 			return
 		
 		try: JSON.update({
-			ctx.channel.id: {"server": SourceServer(connectionString), "toNotify": []}
+			str(ctx.channel.id): {"server": SourceServer(connectionString), "toNotify": []}
 		})
 		except SourceError as e: await ctx.send("Error, " + e.message.split(" | ")[1])
 		except ValueError: await ctx.send("Connection string invalid")
@@ -120,20 +120,25 @@ class ServerCommands(commands.Cog):
 	
 	@tasks.loop(minutes=int(PING_COOLDOWN))
 	async def pingServer(self):
-		for serverCon in JSON.values():
+		await self.bot.wait_until_ready()
+
+		for channelID, serverCon in JSON.items():
 			if serverCon["server"].isClosed: return
 			try: serverCon["server"].ping()
 			except SourceError:
 				for personToNotify in serverCon["toNotify"]:
-					user = bot.get_user(personToNotify)
+					user = self.bot.get_user(personToNotify)
+					guildName = self.bot.get_channel(int(channelID)).guild.name
 					await user.send(f'''
-					**WARNING:** The Source Dedicated Server assigned to this bot is down!\n*You are receiving this message as you are set to be notified if the server goes down at {self.bot.guilds[0].name}*
+					**WARNING:** The Source Dedicated Server @ {serverCon["server"]._ip}:{serverCon["server"]._port} assigned to this bot is down!\n*You are receiving this message as you are set to be notified if the server goes down at {guildName}*
 					''')
 				
 				serverCon["server"].close()
 
 # User commands
 class UserCommands(commands.Cog):
+	'''Commands to be run by any user in a channel with a connection'''
+
 	@commands.command()
 	async def players(self, ctx):
 		'''Gets all players on the server'''

@@ -143,7 +143,11 @@ class UserCommands(commands.Cog):
 	async def players(self, ctx):
 		'''Gets all players on the server'''
 
-		count, plrs = JSON[str(ctx.channel.id)]["server"].getPlayers()
+		try: count, plrs = JSON[str(ctx.channel.id)]["server"].getPlayers()
+		except SourceError as e:
+			await ctx.send("Unable to get players")
+			print(e.message)
+			return
 
 		if count == 0:
 			await ctx.send("Doesn't look like there's anyone online at the moment, try again later")

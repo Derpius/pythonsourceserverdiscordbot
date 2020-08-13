@@ -143,9 +143,19 @@ class UserCommands(commands.Cog):
 	async def players(self, ctx):
 		'''Gets all players on the server'''
 
-		_, plrs = JSON[str(ctx.channel.id)]["server"].getPlayers()
-		simplifiedPlayers = [(player[1], player[2], round(player[3] / 60**2, 1)) for player in plrs]
-		table = makeTable(("Name", "Score", "Time on Server (hours)"), simplifiedPlayers)
+		count, plrs = JSON[str(ctx.channel.id)]["server"].getPlayers()
+
+		if count == 0:
+			await ctx.send("Doesn't look like there's anyone online at the moment, try again later")
+			return
+
+		if JSON[str(ctx.channel.id)]["server"].info["game"] != "The Ship":
+			simplifiedPlayers = [(player[1], player[2], round(player[3] / 60**2, 1)) for player in plrs]
+			table = makeTable(("Name", "Score", "Time on Server (hours)"), simplifiedPlayers)
+		else:
+			simplifiedPlayers = [(player[1], player[2], player[4], player[5]) for player in plrs]
+			table = makeTable(("Name", "Score", "Deaths", "Money"), simplifiedPlayers)
+
 		await ctx.send("Players on the server:\n```\n" + table + "\n```")
 	
 	# Command validity checks

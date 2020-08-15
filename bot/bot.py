@@ -233,6 +233,10 @@ class UserCommands(commands.Cog):
 
 	@commands.command()
 	async def rules(self, ctx, ruleName: str = None):
+		'''
+		Gets a rule's value from the server or all if none specified (Discord embed char limit permitting)\n
+		Note, only people with manage server perms can get all rules to reduce spam
+		'''
 		try: rules = JSON[str(ctx.channel.id)]["server"].rules
 		except SourceError as e:
 			await ctx.send("Unable to get rules")

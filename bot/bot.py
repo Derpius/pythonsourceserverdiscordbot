@@ -182,7 +182,7 @@ class UserCommands(commands.Cog):
 				embed.add_field(name="Time Before Arrest", value="%d seconds" % info["duration"], inline=True)
 
 			embed.set_footer(text="Keywords: " + info["keywords"])
-			
+
 			await ctx.send(embed=embed)
 			return
 		
@@ -230,6 +230,46 @@ class UserCommands(commands.Cog):
 
 		embed.add_field(name=f"Players on server {srvName}", value=val, inline=False)
 		await ctx.send(embed=embed)
+
+	@commands.command()
+	async def rules(self, ctx, ruleName: str = None):
+		try: rules = JSON[str(ctx.channel.id)]["server"].rules
+		except SourceError as e:
+			await ctx.send("Unable to get rules")
+			print(e.message)
+			return
+		
+		if ruleName is None:
+			if not ctx.channel.permissions_for(ctx.message.author).manage_guild:
+				await ctx.send(f"You don't have permission to show all rules for anti-spam reasons <@{ctx.message.author.id}>")
+				return
+			
+			embed = discord.Embed(
+				title="Server Rules",
+				description="All rules the server uses\n*Note: embeds are capped at 6000 chars, so you may not see all rules*",
+				colour=COLOUR
+			)
+
+			ruleString = ""
+			page = 0
+			count = 0
+			for key, val in rules.items():
+				if page == 5: break
+				if len(ruleString) + len(key) + len(str(val)) + 2 >= 1024:
+					page += 1
+					embed.add_field(name=u"\u200B\n" + str(page) + "\n" + u"\u00AF" * 10, value=ruleString[2:], inline=False)
+					ruleString = ""
+				
+				ruleString += ", {0}: {1}".format(key, val)
+				count += 1
+
+			embed.set_footer(text="%d out of %d rules could be shown" % (count, len(rules.keys())))
+			await ctx.send(embed=embed)
+			return
+		
+		if ruleName not in rules: await ctx.send("The rule '%s' doesn't exist" % ruleName); return
+
+		await ctx.send("{0}: {1}".format(ruleName, rules[ruleName]))
 	
 	# Command validity checks
 	async def cog_check(self, ctx):

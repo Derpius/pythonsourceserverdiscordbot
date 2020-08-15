@@ -6,6 +6,7 @@ from discord.ext import commands, tasks
 from discord.ext.commands import MissingPermissions
 from dotenv import load_dotenv
 import json
+from datetime import timedelta
 
 from sourceserver.sourceserver import SourceServer
 from sourceserver.exceptions import SourceError
@@ -16,6 +17,7 @@ load_dotenv()
 TOKEN = os.getenv("DISCORD_TOKEN")
 PREFIX = os.getenv("COMMAND_PREFIX")
 PING_COOLDOWN = os.getenv("PING_COOLDOWN")
+COLOUR = int(os.getenv("COLOUR"), 16)
 
 JSON = json.load(open(os.path.join(os.path.dirname(os.path.realpath(__file__)), "data.json"), "r"))
 for channelID, connectionObj in JSON.items():
@@ -31,6 +33,21 @@ def onExit(filepath: str):
 
 atexit.register(onExit, __file__)
 
+# Utility to convert timedelta to formatted string
+def formatTimedelta(delta: timedelta) -> str:
+	days, seconds = delta.days, delta.seconds
+	hours = seconds // 3600
+	minutes = (seconds % 3600) // 60
+	seconds = seconds % 60
+
+	datetimeStr = ""
+	if days != 0: datetimeStr += "%d days " % days
+	if hours != 0: datetimeStr += "%dhrs " % hours
+	if minutes != 0: datetimeStr += "%dmin " % minutes
+	if seconds != 0: datetimeStr += "%dsec" % seconds
+
+	return datetimeStr
+
 # Server admin commands (Note, these commands can be run in any channel by people who have manage server perms, even when told not to run)
 class ServerCommands(commands.Cog):
 	'''Server commands to be used by anyone with manager server permissions'''
@@ -41,7 +58,7 @@ class ServerCommands(commands.Cog):
 	
 	@commands.command()
 	@commands.has_permissions(manage_guild=True)
-	async def addConnection(self, ctx, connectionString: str):
+	async def connect(self, ctx, connectionString: str):
 		'''Adds a connection to a source server to this channel'''
 
 		if ctx.channel.id in JSON.keys():
@@ -58,7 +75,7 @@ class ServerCommands(commands.Cog):
 	
 	@commands.command()
 	@commands.has_permissions(manage_guild=True)
-	async def removeConnection(self, ctx):
+	async def disconnect(self, ctx):
 		'''Removes this channel's connection to a source server'''
 
 		if str(ctx.channel.id) not in JSON.keys(): await ctx.send("This channel isn't connected to a server"); return
@@ -140,10 +157,57 @@ class UserCommands(commands.Cog):
 	'''Commands to be run by any user in a channel with a connection'''
 
 	@commands.command()
+	async def info(self, ctx, infoName: str = None):
+		'''Gets server info, all if no name specified\nSee https://github.com/100PXSquared/pythonsourceserver/wiki/SourceServer#the-info-property-values'''
+		try: info = JSON[str(ctx.channel.id)]["server"].info
+		except SourceError as e:
+			await ctx.send("Unable to get info")
+			print(e.message)
+			return
+		
+		if infoName is None:
+			embed = discord.Embed(title="Server Info", description="{name} is playing {game} on {map}".format(**info), colour=COLOUR)
+
+			embed.add_field(name="Players", value="{players}/{max_players}".format(**info), inline=True)
+			embed.add_field(name="Bots", value=str(info["bots"]), inline=True)
+			embed.add_field(name=u"\u200B", value=u"\u200B", inline=True)
+
+			embed.add_field(name="VAC", value=("yes" if info["VAC"] == 1 else "no"), inline=True)
+			embed.add_field(name="Password", value=("yes" if info["visibility"] == 1 else "no"), inline=True)
+			embed.add_field(name=u"\u200B", value=u"\u200B", inline=True)
+
+			if info["game"] == "The Ship":
+				embed.add_field(name="Mode", value=JSON[str(ctx.channel.id)]["server"].MODES[info["mode"]], inline=True)
+				embed.add_field(name="Witnesses Needed", value=str(info["witnesses"]), inline=True)
+				embed.add_field(name="Time Before Arrest", value="%d seconds" % info["duration"], inline=True)
+
+			embed.set_footer(text="Keywords: " + info["keywords"])
+			
+			await ctx.send(embed=embed)
+			return
+		
+		if infoName in ("mode", "witnesses", "duration") and info["game"] != "The Ship":
+			await ctx.send("%s is only valid on servers running The Ship" % infoName)
+			return
+		
+		if infoName not in info.keys():
+			embed = discord.Embed(
+				title="'%s' is invalid" % infoName,
+				description="See [the wiki](https://github.com/100PXSquared/pythonsourceserver/wiki/SourceServer#the-info-property-values \"Python Source Server Query Library Wiki\")",
+				colour=COLOUR
+			)
+			await ctx.send(embed=embed); return
+		
+		await ctx.send("%s is " % infoName + str(info[infoName]))
+	
+	@commands.command()
 	async def players(self, ctx):
 		'''Gets all players on the server'''
 
-		try: count, plrs = JSON[str(ctx.channel.id)]["server"].getPlayers()
+		try:
+			count, plrs = JSON[str(ctx.channel.id)]["server"].getPlayers()
+			isTheShip = JSON[str(ctx.channel.id)]["server"].info["game"] == "The Ship"
+			srvName = JSON[str(ctx.channel.id)]["server"].info["name"]
 		except SourceError as e:
 			await ctx.send("Unable to get players")
 			print(e.message)
@@ -152,15 +216,20 @@ class UserCommands(commands.Cog):
 		if count == 0:
 			await ctx.send("Doesn't look like there's anyone online at the moment, try again later")
 			return
+		
+		embed = discord.Embed(colour=COLOUR)
+		val = ""
+		for player in plrs:
+			if player[1] == "": continue
 
-		if JSON[str(ctx.channel.id)]["server"].info["game"] != "The Ship":
-			simplifiedPlayers = [(player[1], player[2], round(player[3] / 60**2, 1)) for player in plrs]
-			table = makeTable(("Name", "Score", "Time on Server (hours)"), simplifiedPlayers)
-		else:
-			simplifiedPlayers = [(player[1], player[2], player[4], player[5]) for player in plrs]
-			table = makeTable(("Name", "Score", "Deaths", "Money"), simplifiedPlayers)
+			val += "*%s*\n" % player[1]
+			if not isTheShip:
+				val += "Score: %d | Time on server: %s\n\n" % (player[2], formatTimedelta(timedelta(seconds=player[3])))
+			else:
+				val += "Score: %d | Deaths: %d | Money: %d\n\n" % (player[2], player[4], player[5])
 
-		await ctx.send("Players on the server:\n```\n" + table + "\n```")
+		embed.add_field(name=f"Players on server {srvName}", value=val, inline=False)
+		await ctx.send(embed=embed)
 	
 	# Command validity checks
 	async def cog_check(self, ctx):

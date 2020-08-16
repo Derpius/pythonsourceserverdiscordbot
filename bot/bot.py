@@ -10,18 +10,27 @@ from datetime import timedelta
 
 from sourceserver.sourceserver import SourceServer
 from sourceserver.exceptions import SourceError
-from tablemaker import makeTable
 
-# Initialise variable from local storage
+from relay.relay import Relay
+
+# Initialise variables from local storage
 load_dotenv()
 TOKEN = os.getenv("DISCORD_TOKEN")
 PREFIX = os.getenv("COMMAND_PREFIX")
-PING_COOLDOWN = os.getenv("PING_COOLDOWN")
+TIME_DOWN_BEFORE_NOTIFY = int(os.getenv("TIME_DOWN_BEFORE_NOTIFY"))
 COLOUR = int(os.getenv("COLOUR"), 16)
+PORT = int(os.getenv("RELAY_PORT"))
 
+# Load data from json
 JSON = json.load(open(os.path.join(os.path.dirname(os.path.realpath(__file__)), "data.json"), "r"))
+relayChannel = JSON[1]
+JSON = JSON[0]
+
 for channelID, connectionObj in JSON.items():
 	JSON[channelID]["server"] = SourceServer(connectionObj["server"])
+
+# Init relay http server
+r = Relay(PORT)
 
 # Define and register clean shutdown function
 def onExit(filepath: str):
@@ -29,7 +38,7 @@ def onExit(filepath: str):
 
 	for channelID, connectionObj in JSON.items():
 		JSON[channelID]["server"] = "%s:%d" % (connectionObj["server"]._ip, connectionObj["server"]._port)
-	json.dump(JSON, open(os.path.join(os.path.dirname(os.path.realpath(filepath)), "data.json"), "w"))
+	json.dump([JSON, relayChannel], open(os.path.join(os.path.dirname(os.path.realpath(filepath)), "data.json"), "w"))
 
 atexit.register(onExit, __file__)
 
@@ -52,9 +61,11 @@ def formatTimedelta(delta: timedelta) -> str:
 class ServerCommands(commands.Cog):
 	'''Server commands to be used by anyone with manager server permissions'''
 
-	def __init__(self, bot):
+	def __init__(self, bot: commands.Bot):
 		self.bot = bot
+		# pylint: disable=no-member
 		self.pingServer.start() # PyLint sees this as an error, even though it's not
+		self.getSourceMsgs.start()
 	
 	@commands.command()
 	@commands.has_permissions(manage_guild=True)
@@ -67,7 +78,7 @@ class ServerCommands(commands.Cog):
 			return
 		
 		try: JSON.update({
-			str(ctx.channel.id): {"server": SourceServer(connectionString), "toNotify": []}
+			str(ctx.channel.id): {"server": SourceServer(connectionString), "toNotify": [], "time_since_down": -1}
 		})
 		except SourceError as e: await ctx.send("Error, " + e.message.split(" | ")[1])
 		except ValueError: await ctx.send("Connection string invalid")
@@ -100,7 +111,9 @@ class ServerCommands(commands.Cog):
 
 		JSON[str(ctx.channel.id)]["server"].retry()
 		if JSON[str(ctx.channel.id)]["server"].isClosed: await ctx.send("Failed to reconnect to server")
-		else: await ctx.send("Successfully reconnected to server!")
+		else:
+			JSON[str(ctx.channel.id)]["server"]["time_since_down"] = -1
+			await ctx.send("Successfully reconnected to server!")
 	
 	@commands.command()
 	@commands.has_permissions(manage_guild=True)
@@ -119,6 +132,24 @@ class ServerCommands(commands.Cog):
 			else:
 				JSON[str(ctx.channel.id)]["toNotify"].remove(personToNotify.id)
 				await ctx.send(f"{personToNotify.name} will no longer be notified if the server is down")
+			
+	@commands.command()
+	@commands.has_permissions(manage_guild=True)
+	async def relayHere(self, ctx):
+		'''Sets this channel as game chat relay destination'''
+		global relayChannel
+		relayChannel = ctx.channel.id
+
+		await ctx.send("Relay set successfully!")
+	
+	@commands.command()
+	@commands.has_permissions(manage_guild=True)
+	async def disableRelay(self, ctx):
+		'''Disables relay (note, the relay thread will still run)'''
+		global relayChannel
+		relayChannel = None
+
+		await ctx.send("Relay disabled, use `!relayHere` to re-enable")
 
 	# Cog error handler
 	async def cog_command_error(self, ctx, error):
@@ -133,9 +164,11 @@ class ServerCommands(commands.Cog):
 	
 	# Tasks
 	def cog_unload(self):
+		# pylint: disable=no-member
 		self.pingServer.cancel() # PyLint sees this as an error, even though it's not
+		self.getSourceMsgs.cancel()
 	
-	@tasks.loop(minutes=int(PING_COOLDOWN))
+	@tasks.loop(minutes=1)
 	async def pingServer(self):
 		await self.bot.wait_until_ready()
 
@@ -143,6 +176,9 @@ class ServerCommands(commands.Cog):
 			if serverCon["server"].isClosed: return
 			try: serverCon["server"].ping()
 			except SourceError:
+				JSON[channelID]["time_since_down"] += 1
+				if serverCon["time_since_down"] < TIME_DOWN_BEFORE_NOTIFY: continue
+
 				for personToNotify in serverCon["toNotify"]:
 					user = self.bot.get_user(personToNotify)
 					guildName = self.bot.get_channel(int(channelID)).guild.name
@@ -151,6 +187,23 @@ class ServerCommands(commands.Cog):
 					''')
 				
 				serverCon["server"].close()
+	
+	@tasks.loop(seconds=0.1)
+	async def getSourceMsgs(self):
+		await self.bot.wait_until_ready()
+
+		msgs = tuple(r.getMessages())[0]
+		if len(msgs) == 0 or relayChannel is None: return
+
+		for msg in msgs:
+			embed = discord.Embed(description=msg[1], colour=COLOUR)
+			embed.set_author(name=msg[0], icon_url=msg[2])
+			await self.bot.get_channel(relayChannel).send(embed=embed)
+
+	@commands.Cog.listener()
+	async def on_message(self, msg: discord.Message):
+		if msg.channel.id != relayChannel or msg.author.bot: return
+		r.addMessage([msg.author.display_name, msg.content])
 
 # User commands
 class UserCommands(commands.Cog):

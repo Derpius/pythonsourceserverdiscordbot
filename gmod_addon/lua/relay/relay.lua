@@ -1,4 +1,3 @@
-local relayServer = "localhost:8080"
 local toggle = false
 
 function onChat(plr, msg, teamCht)
@@ -8,7 +7,7 @@ function onChat(plr, msg, teamCht)
 
 	http.Fetch("http://steamcommunity.com/profiles/" .. steamID .. "?xml=1", function(content, size)
 		local avatar = content:match("<avatarIcon><!%[CDATA%[(.-)%]%]></avatarIcon>")
-		http.Post("http://localhost:8080", {name=plrName, message=msg, icon=avatar}, function(result)
+		http.Post("http://" .. connection, {name=plrName, message=msg, icon=avatar}, function(result)
 			if result then print("Message POSTed to bot") end
 		end, function(failed)
 			print(failed)
@@ -41,7 +40,7 @@ function httpCallback(statusCode, content, headers)
 			failed = function(reason) print("GET Failed: " .. reason) end,
 			success = httpCallback,
 			method = "GET",
-			url = "http://localhost:8080"
+			url = "http://" .. connection
 		})
 	end
 end
@@ -56,7 +55,7 @@ concommand.Add("startRelay", function(plr, cmd, args, argStr)
 			failed = function(reason) print("GET Failed: " .. reason) end,
 			success = httpCallback,
 			method = "GET",
-			url = "http://localhost:8080"
+			url = "http://" .. connection
 		})
 
 		print("Relay started")

@@ -1,6 +1,8 @@
 local relayServer = "localhost:8080"
+local toggle = false
 
 function onChat(plr, msg, teamCht)
+	if not toggle then return end
 	local plrName = plr:Nick()
 	local steamID = plr:SteamID64()
 
@@ -34,19 +36,35 @@ function httpCallback(statusCode, content, headers)
 		end
 	end
 
-	HTTP({
-		failed = function(reason) print("GET Failed: " .. reason) end,
-		success = httpCallback,
-		method = "GET",
-		url = "http://localhost:8080"
-	})
+	if toggle then
+		HTTP({
+			failed = function(reason) print("GET Failed: " .. reason) end,
+			success = httpCallback,
+			method = "GET",
+			url = "http://localhost:8080"
+		})
+	end
 end
 
 hook.Add("PlayerSay", "relayMessagesToDiscordBot", onChat)
 
-HTTP({
-	failed = function(reason) print("GET Failed: " .. reason) end,
-	success = httpCallback,
-	method = "GET",
-	url = "http://localhost:8080"
-})
+concommand.Add("startRelay", function(plr, cmd, args, argStr)
+	if not plr:IsPlayer() then
+		toggle = true
+
+		HTTP({
+			failed = function(reason) print("GET Failed: " .. reason) end,
+			success = httpCallback,
+			method = "GET",
+			url = "http://localhost:8080"
+		})
+
+		print("Relay started")
+	end
+end)
+concommand.Add("stopRelay", function(plr, cmd, args, argStr)
+	if not plr:IsPlayer() then
+		toggle = false
+		print("Relay stopped")
+	end
+end)

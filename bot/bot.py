@@ -206,7 +206,10 @@ class ServerCommands(commands.Cog):
 	@commands.Cog.listener()
 	async def on_message(self, msg: discord.Message):
 		if msg.channel.id != relayChannel or msg.author.bot: return
-		r.addMessage([msg.author.display_name, msg.content, msg.author.colour.to_rgb()])
+
+		if msg.author.colour.value == 0: colour = (255, 255, 255)
+		else: colour = msg.author.colour.to_rgb()
+		r.addMessage([msg.author.display_name, msg.content, colour])
 
 # User commands
 class UserCommands(commands.Cog):

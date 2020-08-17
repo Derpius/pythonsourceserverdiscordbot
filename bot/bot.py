@@ -28,6 +28,7 @@ JSON = JSON[0]
 
 for channelID, connectionObj in JSON.items():
 	JSON[channelID]["server"] = SourceServer(connectionObj["server"])
+	JSON[channelID]["time_since_down"] = -1
 
 # Init relay http server
 r = Relay(PORT)
@@ -82,7 +83,9 @@ class ServerCommands(commands.Cog):
 		})
 		except SourceError as e: await ctx.send("Error, " + e.message.split(" | ")[1])
 		except ValueError: await ctx.send("Connection string invalid")
-		else: await ctx.send("Successfully connected to server!")
+		else:
+			if JSON[str(ctx.channel.id)]["server"].isClosed: await ctx.send("Failed to connect to server")
+			else: await ctx.send("Successfully connected to server!")
 	
 	@commands.command()
 	@commands.has_permissions(manage_guild=True)
@@ -112,7 +115,7 @@ class ServerCommands(commands.Cog):
 		JSON[str(ctx.channel.id)]["server"].retry()
 		if JSON[str(ctx.channel.id)]["server"].isClosed: await ctx.send("Failed to reconnect to server")
 		else:
-			JSON[str(ctx.channel.id)]["server"]["time_since_down"] = -1
+			JSON[str(ctx.channel.id)]["time_since_down"] = -1
 			await ctx.send("Successfully reconnected to server!")
 	
 	@commands.command()
@@ -196,14 +199,14 @@ class ServerCommands(commands.Cog):
 		if len(msgs) == 0 or relayChannel is None: return
 
 		for msg in msgs:
-			embed = discord.Embed(description=msg[1], colour=COLOUR)
-			embed.set_author(name=msg[0], icon_url=msg[2])
+			embed = discord.Embed(description=msg["message"][0], colour=COLOUR)
+			embed.set_author(name=msg["name"][0], icon_url=msg["icon"][0])
 			await self.bot.get_channel(relayChannel).send(embed=embed)
 
 	@commands.Cog.listener()
 	async def on_message(self, msg: discord.Message):
 		if msg.channel.id != relayChannel or msg.author.bot: return
-		r.addMessage([msg.author.display_name, msg.content])
+		r.addMessage([msg.author.display_name, msg.content, msg.author.colour.to_rgb()])
 
 # User commands
 class UserCommands(commands.Cog):

@@ -4,6 +4,7 @@ from threading import Thread
 import atexit
 import json
 from time import sleep
+from urllib.parse import parse_qs
 
 discordMsgs = []
 sourceMsgs = []
@@ -36,13 +37,13 @@ class Handler(BaseHTTPRequestHandler):
 
 		global discordMsgs
 
-		# Wait for discord messages for 4 minutes. If 4 minutes elapsed, send "none" so the other end can resend the request to avoid timeout
+		# Wait for discord messages for 1 minute. If 1 minute elapsed, send "none" so the other end can resend the request to avoid timeout
 		timeSlept = 0
 		while len(discordMsgs) == 0:
 			sleep(0.1)
 			timeSlept += 0.1
 
-			if timeSlept == 240:
+			if timeSlept >= 30:
 				self.wfile.write(b"none")
 				return
 		
@@ -53,32 +54,15 @@ class Handler(BaseHTTPRequestHandler):
 	def do_POST(self):
 		'''The "receiver" for source server chat'''
 
-		if self.headers["Content-type"] != "application/json":
-			self.send_error(400, "Bad Request", "Request MIME type was not application/json")
+		if self.headers["Content-type"] != "application/x-www-form-urlencoded":
+			self.send_error(400, "Bad Request", "Request MIME type was not valid")
 			self.end_headers()
 			return
 		
 		data = self.rfile.read(int(self.headers['Content-Length'])).decode("utf-8")
-		
-		try: JSON = json.loads(data)
-		except json.JSONDecodeError:
-			self.send_error(400, "Invalid JSON", "Body contained invalid JSON syntax")
-			self.end_headers()
-			return
-		
-		if not isinstance(JSON, list):
-			self.send_error(400, "Invalid JSON", "JSON was not a list")
-			self.end_headers()
-			return
-		
-		for msg in JSON:
-			if not isinstance(msg, list) or len(msg) != 3:
-				self.send_error(400, "Invalid Message", "JSON contained message that was not of the correct format")
-				self.end_headers()
-				return
-			
-			global sourceMsgs
-			sourceMsgs.append(msg)
+
+		global sourceMsgs
+		sourceMsgs.append(parse_qs(data))
 		
 		self.send_response(200)
 		self.end_headers()
@@ -105,14 +89,4 @@ class Relay(object):
 if __name__ == "__main__":
 	r = Relay(8080)
 
-	for i in range(30):
-		sleep(1)
-		print(i)
-	
-	r.addMessage(["username", "message"])
-
-	for i in range(30):
-		sleep(1)
-		print(i)
-	
-	print(r.getMessages())
+	sleep(500)

@@ -126,12 +126,12 @@ class ServerCommands(commands.Cog):
 		if personToNotify.bot: await ctx.send("Bots cannot be notified if the server is down"); return
 
 		if shouldNotify:
-			if ctx.message.author.id in JSON[str(ctx.channel.id)]["toNotify"]: await ctx.send(f"Already configured to notify {personToNotify.name}")
+			if personToNotify.id in JSON[str(ctx.channel.id)]["toNotify"]: await ctx.send(f"Already configured to notify {personToNotify.name}")
 			else:
 				JSON[str(ctx.channel.id)]["toNotify"].append(personToNotify.id)
 				await ctx.send(f"{personToNotify.name} will now be notified if the server is down")
 		else:
-			if ctx.message.author.id not in JSON[str(ctx.channel.id)]["toNotify"]: await ctx.send(f"Already configured to not notify {personToNotify.name}")
+			if personToNotify.id not in JSON[str(ctx.channel.id)]["toNotify"]: await ctx.send(f"Already configured to not notify {personToNotify.name}")
 			else:
 				JSON[str(ctx.channel.id)]["toNotify"].remove(personToNotify.id)
 				await ctx.send(f"{personToNotify.name} will no longer be notified if the server is down")

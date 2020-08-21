@@ -190,6 +190,8 @@ class ServerCommands(commands.Cog):
 					''')
 				
 				serverCon["server"].close()
+			else:
+				if JSON[channelID]["time_since_down"] != -1: JSON[channelID]["time_since_down"] = -1
 	
 	@tasks.loop(seconds=0.1)
 	async def getSourceMsgs(self):

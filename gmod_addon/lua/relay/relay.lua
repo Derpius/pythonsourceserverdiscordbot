@@ -4,10 +4,11 @@ function onChat(plr, msg, teamCht)
 	if not toggle then return end
 	local plrName = plr:Nick()
 	local steamID = plr:SteamID64()
+	local teamID = plr:Team()
 
 	http.Fetch("http://steamcommunity.com/profiles/" .. steamID .. "?xml=1", function(content, size)
 		local avatar = content:match("<avatarIcon><!%[CDATA%[(.-)%]%]></avatarIcon>")
-		http.Post("http://" .. connection, {name=plrName, message=msg, icon=avatar}, function(result)
+		http.Post("http://" .. connection, {name=plrName, message=msg, icon=avatar, teamName=team.GetName(teamID)}, function(result)
 			if result then print("Message POSTed to bot") end
 		end, function(failed)
 			print(failed)

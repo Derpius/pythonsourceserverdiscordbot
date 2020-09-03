@@ -179,13 +179,14 @@ class ServerCommands(commands.Cog):
 	@tasks.loop(seconds=0.1)
 	async def getSourceMsgs(self):
 		await self.bot.wait_until_ready()
+		if relayChannel is None: return
 
 		msgs = tuple(r.getMessages())[0]
-		if len(msgs) == 0 or relayChannel is None: return
+		if len(msgs) == 0: return
 
 		for msg in msgs:
 			embed = discord.Embed(description=msg["message"][0], colour=COLOUR)
-			embed.set_author(name=msg["name"][0], icon_url=msg["icon"][0])
+			embed.set_author(name="[%s] %s" % (msg["teamName"][0], msg["name"][0]), icon_url=msg["icon"][0])
 			await self.bot.get_channel(relayChannel).send(embed=embed)
 
 	@commands.Cog.listener()

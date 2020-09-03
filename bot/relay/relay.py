@@ -43,7 +43,7 @@ class Handler(BaseHTTPRequestHandler):
 			sleep(0.1)
 			timeSlept += 0.1
 
-			if timeSlept >= 30:
+			if timeSlept >= 60:
 				self.wfile.write(b"none")
 				return
 		

@@ -117,24 +117,6 @@ class ServerCommands(commands.Cog):
 		else:
 			JSON[str(ctx.channel.id)]["time_since_down"] = -1
 			await ctx.send("Successfully reconnected to server!")
-	
-	@commands.command()
-	@commands.has_permissions(manage_guild=True)
-	async def notifyIfDown(self, ctx, personToNotify: discord.User, shouldNotify: bool = True):
-		'''Tells the bot to change notification status for a person. If no toggle passed, defaults to true'''
-
-		if personToNotify.bot: await ctx.send("Bots cannot be notified if the server is down"); return
-
-		if shouldNotify:
-			if personToNotify.id in JSON[str(ctx.channel.id)]["toNotify"]: await ctx.send(f"Already configured to notify {personToNotify.name}")
-			else:
-				JSON[str(ctx.channel.id)]["toNotify"].append(personToNotify.id)
-				await ctx.send(f"{personToNotify.name} will now be notified if the server is down")
-		else:
-			if personToNotify.id not in JSON[str(ctx.channel.id)]["toNotify"]: await ctx.send(f"Already configured to not notify {personToNotify.name}")
-			else:
-				JSON[str(ctx.channel.id)]["toNotify"].remove(personToNotify.id)
-				await ctx.send(f"{personToNotify.name} will no longer be notified if the server is down")
 			
 	@commands.command()
 	@commands.has_permissions(manage_guild=True)
@@ -335,6 +317,44 @@ class UserCommands(commands.Cog):
 		if ruleName not in rules: await ctx.send("The rule '%s' doesn't exist" % ruleName); return
 
 		await ctx.send("{0}: {1}".format(ruleName, rules[ruleName]))
+	
+	@commands.command()
+	async def notifyIfDown(self, ctx, personToNotify: [discord.User, discord.Member] = None):
+		'''
+		Tells the bot to notify you or a person of your choice when the server is down.
+		Passing a person without you having manage server perms is not allowed (unless that person is yourself).
+		'''
+
+		if personToNotify is not None:
+			if not ctx.channel.permissions_for(ctx.message.author).manage_guild and ctx.message.author.id != personToNotify.id:
+				await ctx.send(f"You don't have permission to set the notification status for other people <@{ctx.message.author.id}>")
+				return
+		else: personToNotify = ctx.message.author
+
+		if personToNotify.bot: await ctx.send("Bots cannot be notified if the server is down"); return
+
+		if personToNotify.id in JSON[str(ctx.channel.id)]["toNotify"]: await ctx.send(f"Already configured to notify {personToNotify.name}")
+		else:
+			JSON[str(ctx.channel.id)]["toNotify"].append(personToNotify.id)
+			await ctx.send(f"{personToNotify.name} will now be notified if the server is down")
+	
+	@commands.command()
+	async def dontNotifyIfDown(self, ctx, personToNotNotify: [discord.User, discord.Member] = None):
+		'''
+		Tells the bot to stop notifying you or a person of your choice when the server is down.
+		Passing a person without you having manage server perms is not allowed (unless that person is yourself).
+		'''
+
+		if personToNotNotify is not None:
+			if not ctx.channel.permissions_for(ctx.message.author).manage_guild and ctx.message.author.id != personToNotNotify.id:
+				await ctx.send(f"You don't have permission to set the notification status for other people <@{ctx.message.author.id}>")
+				return
+		else: personToNotNotify = ctx.message.author
+
+		if personToNotNotify.id not in JSON[str(ctx.channel.id)]["toNotify"]: await ctx.send(f"Already configured to not notify {personToNotNotify.name}")
+		else:
+			JSON[str(ctx.channel.id)]["toNotify"].remove(personToNotNotify.id)
+			await ctx.send(f"{personToNotNotify.name} will no longer be notified if the server is down")
 	
 	# Command validity checks
 	async def cog_check(self, ctx):

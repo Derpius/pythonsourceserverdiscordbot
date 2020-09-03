@@ -1,12 +1,13 @@
 import os
 import atexit
+from dotenv import load_dotenv
+import json
+from datetime import timedelta
+from typing import Union
 
 import discord
 from discord.ext import commands, tasks
 from discord.ext.commands import MissingPermissions
-from dotenv import load_dotenv
-import json
-from datetime import timedelta
 
 from sourceserver.sourceserver import SourceServer
 from sourceserver.exceptions import SourceError
@@ -319,7 +320,7 @@ class UserCommands(commands.Cog):
 		await ctx.send("{0}: {1}".format(ruleName, rules[ruleName]))
 	
 	@commands.command()
-	async def notifyIfDown(self, ctx, personToNotify: [discord.User, discord.Member] = None):
+	async def notifyIfDown(self, ctx, personToNotify: Union[discord.User, discord.Member] = None):
 		'''
 		Tells the bot to notify you or a person of your choice when the server is down.
 		Passing a person without you having manage server perms is not allowed (unless that person is yourself).
@@ -339,7 +340,7 @@ class UserCommands(commands.Cog):
 			await ctx.send(f"{personToNotify.name} will now be notified if the server is down")
 	
 	@commands.command()
-	async def dontNotifyIfDown(self, ctx, personToNotNotify: [discord.User, discord.Member] = None):
+	async def dontNotifyIfDown(self, ctx, personToNotNotify: Union[discord.User, discord.Member] = None):
 		'''
 		Tells the bot to stop notifying you or a person of your choice when the server is down.
 		Passing a person without you having manage server perms is not allowed (unless that person is yourself).

@@ -1,7 +1,6 @@
 local toggle = false
 
 function onChat(plr, msg, teamCht)
-	if not toggle then return end
 	local plrName = plr:Nick()
 	local steamID = plr:SteamID64()
 	local teamID = plr:Team()
@@ -46,11 +45,11 @@ function httpCallback(statusCode, content, headers)
 	end
 end
 
-hook.Add("PlayerSay", "relayMessagesToDiscordBot", onChat)
-
 concommand.Add("startRelay", function(plr, cmd, args, argStr)
 	if not plr:IsPlayer() then
 		toggle = true
+
+		hook.Add("PlayerSay", "relayMessagesToDiscordBot", onChat)
 
 		HTTP({
 			failed = function(reason) print("GET Failed: " .. reason) end,
@@ -65,6 +64,9 @@ end)
 concommand.Add("stopRelay", function(plr, cmd, args, argStr)
 	if not plr:IsPlayer() then
 		toggle = false
+
+		hook.Remove("PlayerSay", "relayMessagesToDiscordBot")
+
 		print("Relay stopped")
 	end
 end)

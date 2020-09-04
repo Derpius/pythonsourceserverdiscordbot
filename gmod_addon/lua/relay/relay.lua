@@ -1,16 +1,20 @@
 local toggle = false
 
-function onChat(plr, msg, teamCht)
-	local plrName = plr:Nick()
-	local steamID = plr:SteamID64()
-	local teamID = plr:Team()
+function onJoinOrLeave(plrNick, reqType)
+	http.Post("http://" .. connection, {type=reqType, name=plrNick}, function(result)
+		if result then print("Join/Leave event POSTed to bot") end
+	end, function(reason)
+		print("Join/Leave POST failed: ".. reason)
+	end)
+end
 
-	http.Fetch("http://steamcommunity.com/profiles/" .. steamID .. "?xml=1", function(content, size)
+function onChat(plr, msg, teamCht)
+	http.Fetch("http://steamcommunity.com/profiles/" .. plr:SteamID64() .. "?xml=1", function(content, size)
 		local avatar = content:match("<avatarIcon><!%[CDATA%[(.-)%]%]></avatarIcon>")
-		http.Post("http://" .. connection, {name=plrName, message=msg, icon=avatar, teamName=team.GetName(teamID)}, function(result)
+		http.Post("http://" .. connection, {type="message", name=plr:Nick(), message=msg, icon=avatar, teamName=team.GetName(plr:Team())}, function(result)
 			if result then print("Message POSTed to bot") end
-		end, function(failed)
-			print(failed)
+		end, function(reason)
+			print("Message POST failed: ".. reason)
 		end)
 	end)
 end
@@ -50,6 +54,8 @@ concommand.Add("startRelay", function(plr, cmd, args, argStr)
 		toggle = true
 
 		hook.Add("PlayerSay", "relayMessagesToDiscordBot", onChat)
+		hook.Add("PlayerInitialSpawn", "relayJoinsToDiscordBot", function(plr) onJoinOrLeave(plr:Nick(), "join") end)
+		hook.Add("PlayerDisconnected", "relayLeavesToDiscordBot", function(plr) onJoinOrLeave(plr:Nick(), "leave") end)
 
 		HTTP({
 			failed = function(reason) print("GET Failed: " .. reason) end,
@@ -66,6 +72,8 @@ concommand.Add("stopRelay", function(plr, cmd, args, argStr)
 		toggle = false
 
 		hook.Remove("PlayerSay", "relayMessagesToDiscordBot")
+		hook.Remove("PlayerInitialSpawn", "relayJoinsToDiscordBot")
+		hook.Remove("PlayerDisconnected", "relayLeavesToDiscordBot")
 
 		print("Relay stopped")
 	end

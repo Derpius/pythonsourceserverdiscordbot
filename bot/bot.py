@@ -4,6 +4,7 @@ from dotenv import load_dotenv
 import json
 from datetime import timedelta
 from typing import Union
+import random
 
 import discord
 from discord.ext import commands, tasks
@@ -30,6 +31,14 @@ JSON = JSON[0]
 for channelID, connectionObj in JSON.items():
 	JSON[channelID]["server"] = SourceServer(connectionObj["server"])
 	JSON[channelID]["time_since_down"] = -1
+
+# Load leave and join messages from json
+joinLeaveMsgs = json.load(open(os.path.join(os.path.dirname(os.path.realpath(__file__)), "joinLeaveMsgs.json"), "r"))
+
+if "joinMsgs" not in joinLeaveMsgs.keys() or len(joinLeaveMsgs["joinMsgs"]) == 0:
+	joinLeaveMsgs["joinMsgs"] = ["%s just joined the server!"]
+if "leaveMsgs" not in joinLeaveMsgs.keys() or len(joinLeaveMsgs["leaveMsgs"]) == 0:
+	joinLeaveMsgs["leaveMsgs"] = ["%s just left the server"]
 
 # Init relay http server
 r = Relay(PORT)
@@ -67,7 +76,7 @@ class ServerCommands(commands.Cog):
 		self.bot = bot
 		# pylint: disable=no-member
 		self.pingServer.start() # PyLint sees this as an error, even though it's not
-		self.getSourceMsgs.start()
+		self.getFromRelay.start()
 	
 	@commands.command()
 	@commands.has_permissions(manage_guild=True)
@@ -152,7 +161,7 @@ class ServerCommands(commands.Cog):
 	def cog_unload(self):
 		# pylint: disable=no-member
 		self.pingServer.cancel() # PyLint sees this as an error, even though it's not
-		self.getSourceMsgs.cancel()
+		self.getFromRelay.cancel()
 	
 	@tasks.loop(minutes=1)
 	async def pingServer(self):
@@ -177,17 +186,25 @@ class ServerCommands(commands.Cog):
 				if JSON[channelID]["time_since_down"] != -1: JSON[channelID]["time_since_down"] = -1
 	
 	@tasks.loop(seconds=0.1)
-	async def getSourceMsgs(self):
+	async def getFromRelay(self):
 		await self.bot.wait_until_ready()
 		if relayChannel is None: return
 
 		msgs = tuple(r.getMessages())[0]
-		if len(msgs) == 0: return
-
 		for msg in msgs:
 			embed = discord.Embed(description=msg["message"][0], colour=COLOUR)
 			embed.set_author(name="[%s] %s" % (msg["teamName"][0], msg["name"][0]), icon_url=msg["icon"][0])
 			await self.bot.get_channel(relayChannel).send(embed=embed)
+		
+		# Handle join and leave events
+		# (joins first incase someone joins then leaves in the same tenth of a second, so the leave message always comes after the join)
+		joinsAndLeaves = tuple(r.getJoinsAndLeaves())
+
+		for name in joinsAndLeaves[0]:
+			await self.bot.get_channel(relayChannel).send(random.choice(joinLeaveMsgs["joinMsgs"]) % name)
+		
+		for name in joinsAndLeaves[1]:
+			await self.bot.get_channel(relayChannel).send(random.choice(joinLeaveMsgs["leaveMsgs"]) % name)
 
 	@commands.Cog.listener()
 	async def on_message(self, msg: discord.Message):

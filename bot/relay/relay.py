@@ -8,6 +8,8 @@ from urllib.parse import parse_qs
 
 discordMsgs = []
 sourceMsgs = []
+joins = []
+leaves = []
 
 def relayThread(port):
 	def onExit(filepath: str):
@@ -55,14 +57,33 @@ class Handler(BaseHTTPRequestHandler):
 		'''The "receiver" for source server chat'''
 
 		if self.headers["Content-type"] != "application/x-www-form-urlencoded":
-			self.send_error(400, "Bad Request", "Request MIME type was not valid")
+			print("Request MIME type was not valid, was %s instead" % self.headers["Content-type"])
+			self.send_error(400, "Bad Request", "Request MIME type was not valid, was %s instead" % self.headers["Content-type"])
 			self.end_headers()
 			return
 		
-		data = self.rfile.read(int(self.headers['Content-Length'])).decode("utf-8")
+		request = parse_qs(self.rfile.read(int(self.headers['Content-Length'])).decode("utf-8"))
 
-		global sourceMsgs
-		sourceMsgs.append(parse_qs(data))
+		if "type" not in request.keys():
+			print("Request type param was not present")
+			self.send_error(400, "Bad Request", "Request type param was not present")
+			self.end_headers()
+			return
+
+		if request["type"][0] == "message":
+			global sourceMsgs
+			sourceMsgs.append(request)
+		elif request["type"][0] == "join":
+			global joins
+			joins.append(request["name"][0])
+		elif request["type"][0] == "leave":
+			global leaves
+			leaves.append(request["name"][0])
+		else:
+			print("Request type param was not valid, got %s" % request["type"][0])
+			self.send_error(400, "Bad Request", "Request type param was not valid")
+			self.end_headers()
+			return
 		
 		self.send_response(200)
 		self.end_headers()
@@ -85,6 +106,15 @@ class Relay(object):
 		global sourceMsgs
 		yield sourceMsgs
 		sourceMsgs = []
+
+	def getJoinsAndLeaves(self):
+		global joins
+		yield joins
+		joins = []
+
+		global leaves
+		yield leaves
+		leaves = []
 
 if __name__ == "__main__":
 	r = Relay(8080)

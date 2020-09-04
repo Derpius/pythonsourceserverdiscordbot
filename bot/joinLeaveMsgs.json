@@ -1,0 +1,8 @@
+{
+	"joinMsgs": [
+		"`%s` just joined the server!"
+	],
+	"leaveMsgs": [
+		"`%s` just left the server"
+	]
+}

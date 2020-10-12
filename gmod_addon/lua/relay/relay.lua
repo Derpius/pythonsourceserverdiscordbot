@@ -35,6 +35,7 @@ function httpCallback(statusCode, content, headers)
 				net.WriteString(msg[1])
 				net.WriteString(msg[2])
 				net.WriteColor(colour)
+				hook.Run("GModRelay.DiscordMsg", msg[1], msg[2])
 			net.Broadcast()
 		end
 	end

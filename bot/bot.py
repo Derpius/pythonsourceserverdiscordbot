@@ -219,6 +219,17 @@ class UserCommands(commands.Cog):
 	'''Commands to be run by any user in a channel with a connection'''
 
 	@commands.command()
+	async def status(self, ctx):
+		'''Tells you whether the connection to the server is closed, invalid, or open'''
+		ping = None
+		try: ping = JSON[str(ctx.channel.id)]["server"].ping()
+		except SourceError as e:
+			await ctx.send("Connection to server isn't closed internally, however failed to ping the server with exception `" + e.message + "`")
+			return
+		
+		await ctx.send("Server online, ping %d. (Note that the ping is from the location of the bot)" % ping)
+
+	@commands.command()
 	async def info(self, ctx, infoName: str = None):
 		'''Gets server info, all if no name specified\nSee https://github.com/100PXSquared/pythonsourceserver/wiki/SourceServer#the-info-property-values'''
 		try: info = JSON[str(ctx.channel.id)]["server"].info

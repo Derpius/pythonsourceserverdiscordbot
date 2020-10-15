@@ -178,7 +178,7 @@ class ServerCommands(commands.Cog):
 					user = self.bot.get_user(personToNotify)
 					guildName = self.bot.get_channel(int(channelID)).guild.name
 					await user.send(f'''
-					**WARNING:** The Source Dedicated Server @ {serverCon["server"]._ip}:{serverCon["server"]._port} assigned to this bot is down!\n*You are receiving this message as you are set to be notified if the server goes down at {guildName}*
+					**WARNING:** The Source Dedicated Server `{serverCon["server"]._info["name"] if serverCon["server"]._info != {} else "unknown"}` @ {serverCon["server"]._ip}:{serverCon["server"]._port} assigned to this bot is down!\n*You are receiving this message as you are set to be notified if the server goes down at {guildName}*
 					''')
 				
 				serverCon["server"].close()

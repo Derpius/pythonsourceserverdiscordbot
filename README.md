@@ -8,7 +8,7 @@ The bot needs a few packages to work:
 `pip install -U python-dotenv`  
 `pip install sourceserver`  
 
-To use the bot itself, download the source code zip *(from releases if you want a stable version)* and move the contents of the `/bot` folder to wherever you want.  
+Once you have these prerequisites, download `Bot.zip`, and any Source game relay addons if needed, from the latest release.  
 Before you can use the bot, you'll need to edit the `.env` file and change **at least** the Discord bot token.  
 
 To get a Discord bot token, you will need to create a bot *(and an application if you dont already have one)* at the [Discord developer portal](https://discord.com/developers).  

@@ -130,3 +130,6 @@ dmypy.json
 
 # Testing folder
 testing/
+
+# Releases folder for zips of individual components
+releases/

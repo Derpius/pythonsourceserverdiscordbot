@@ -174,13 +174,22 @@ class ServerCommands(commands.Cog):
 				JSON[channelID]["time_since_down"] += 1
 				if serverCon["time_since_down"] < TIME_DOWN_BEFORE_NOTIFY: continue
 
+				# Create a list of all valid user IDs
+				# This works by appending to this list every valid ID, then setting the toNotify list to this list of valid IDs
+				validIDs = []
+
 				for personToNotify in serverCon["toNotify"]:
 					user = self.bot.get_user(personToNotify)
+					if user is None: continue
+
+					validIDs.append(personToNotify)
+
 					guildName = self.bot.get_channel(int(channelID)).guild.name
 					await user.send(f'''
 					**WARNING:** The Source Dedicated Server `{serverCon["server"]._info["name"] if serverCon["server"]._info != {} else "unknown"}` @ {serverCon["server"]._ip}:{serverCon["server"]._port} assigned to this bot is down!\n*You are receiving this message as you are set to be notified if the server goes down at {guildName}*
 					''')
 				
+				JSON[channelID]["toNotify"] = validIDs
 				serverCon["server"].close()
 			else:
 				if JSON[channelID]["time_since_down"] != -1: JSON[channelID]["time_since_down"] = -1
@@ -217,6 +226,9 @@ class ServerCommands(commands.Cog):
 # User commands
 class UserCommands(commands.Cog):
 	'''Commands to be run by any user in a channel with a connection'''
+
+	def __init__(self, bot: commands.Bot):
+		self.bot = bot
 
 	@commands.command()
 	async def status(self, ctx):
@@ -385,6 +397,29 @@ class UserCommands(commands.Cog):
 		else:
 			JSON[str(ctx.channel.id)]["toNotify"].remove(personToNotNotify.id)
 			await ctx.send(f"{personToNotNotify.name} will no longer be notified if the server is down")
+	
+	@commands.command()
+	async def peopleToNotify(self, ctx):
+		'''
+		Lists all people set to be notified, highlighting the person who runs the command
+		'''
+
+		# As with the actual ping task, we save a list of valid IDs and replace the existing list with this one after the loop
+		validIDs = []
+
+		# Message to be sent
+		msg = "*The following people are set to be notified when the Source server linked to this channel goes down:*\n"
+
+		for userID in JSON[str(ctx.channel.id)]["toNotify"]:
+			userObj = self.bot.get_user(userID)
+			if userObj is None: continue
+
+			validIDs.append(userID)
+
+			msg += (f"<@{ctx.message.author.id}>" if ctx.message.author.id == userID else "`" + userObj.name + "`") + ", "
+		
+		JSON[str(ctx.channel.id)]["toNotify"] = validIDs
+		await ctx.send(msg[:-2])
 	
 	# Command validity checks
 	async def cog_check(self, ctx):

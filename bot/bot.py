@@ -179,13 +179,13 @@ class ServerCommands(commands.Cog):
 				validIDs = []
 
 				for personToNotify in serverCon["toNotify"]:
-					user = self.bot.get_user(personToNotify)
-					if user is None: continue
+					member = await self.bot.get_channel(int(channelID)).guild.fetch_member(personToNotify)
+					if member is None: continue
 
 					validIDs.append(personToNotify)
 
 					guildName = self.bot.get_channel(int(channelID)).guild.name
-					await user.send(f'''
+					await member.send(f'''
 					**WARNING:** The Source Dedicated Server `{serverCon["server"]._info["name"] if serverCon["server"]._info != {} else "unknown"}` @ {serverCon["server"]._ip}:{serverCon["server"]._port} assigned to this bot is down!\n*You are receiving this message as you are set to be notified if the server goes down at {guildName}*
 					''')
 				
@@ -411,12 +411,11 @@ class UserCommands(commands.Cog):
 		msg = "*The following people are set to be notified when the Source server linked to this channel goes down:*\n"
 
 		for userID in JSON[str(ctx.channel.id)]["toNotify"]:
-			userObj = self.bot.get_user(userID)
-			if userObj is None: continue
+			member = await ctx.guild.fetch_member(userID)
+			if member is None: continue
 
 			validIDs.append(userID)
-
-			msg += (f"<@{ctx.message.author.id}>" if ctx.message.author.id == userID else "`" + userObj.name + "`") + ", "
+			msg += (f"<@{ctx.message.author.id}>" if ctx.message.author.id == userID else "`" + member.name + "`") + ", "
 		
 		JSON[str(ctx.channel.id)]["toNotify"] = validIDs
 		await ctx.send(msg[:-2])

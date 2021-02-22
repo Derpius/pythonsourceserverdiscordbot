@@ -11,20 +11,24 @@ end
 function onChat(plr, msg, teamCht)
 	http.Fetch("http://steamcommunity.com/profiles/" .. plr:SteamID64() .. "?xml=1", function(content, size)
 		local avatar = content:match("<avatarIcon><!%[CDATA%[(.-)%]%]></avatarIcon>")
-		http.Post("http://" .. connection, {type="message", name=plr:Nick(), message=msg, icon=avatar, teamName=team.GetName(plr:Team())}, function(result)
-			if result then print("Message POSTed to bot") end
+		local teamColour = team.GetColor(plr:Team())
+		http.Post("http://" .. connection, {
+			type="message",
+			name=plr:Nick(), message=msg, icon=avatar,
+			teamName=team.GetName(plr:Team()), teamColour=tostring(teamColour.r)..","..tostring(teamColour.g)..","..tostring(teamColour.b),
+			steamID = plr:SteamID()
+		}, function(result)
+			if verbose and result then print("Message POSTed to bot") end
 		end, function(reason)
-			print("Message POST failed: ".. reason)
+			if verbose then print("Message POST failed: ".. reason) end
 		end)
 	end)
 end
 
 function httpCallback(statusCode, content, headers)
 	if statusCode != 200 then
-		print("GET failed with status code " .. tostring(statusCode))
-	end
-
-	if content != "none" then
+		if verbose then print("GET failed with status code " .. tostring(statusCode)) end
+	elseif content != "none" then
 		JSON = util.JSONToTable(content)
 
 		for _, msg in pairs(JSON) do
@@ -42,7 +46,7 @@ function httpCallback(statusCode, content, headers)
 
 	if toggle then
 		HTTP({
-			failed = function(reason) print("GET Failed: " .. reason) end,
+			failed = function() httpCallback(500, "none") end,
 			success = httpCallback,
 			method = "GET",
 			url = "http://" .. connection

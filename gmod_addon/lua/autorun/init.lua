@@ -5,7 +5,8 @@ if SERVER then
 
 	util.AddNetworkString("relayDiscordMessageReceived")
 
-	local connection = "localhost:8080"
+	connection = "192.168.0.97:8080"
+	verbose = false
 
 	include("relay/relay.lua")
 	AddCSLuaFile("relay/client.lua")

@@ -5,6 +5,7 @@ import json
 from datetime import timedelta
 from typing import Union
 import random
+import time
 
 import discord
 from discord.ext import commands, tasks
@@ -41,6 +42,7 @@ if "leaveMsgs" not in joinLeaveMsgs.keys() or len(joinLeaveMsgs["leaveMsgs"]) ==
 	joinLeaveMsgs["leaveMsgs"] = ["%s just left the server"]
 
 # Init relay http server
+lastAuthor = ["", 0]
 r = Relay(PORT)
 
 # Define and register clean shutdown function
@@ -199,12 +201,31 @@ class ServerCommands(commands.Cog):
 		await self.bot.wait_until_ready()
 		if relayChannel is None: return
 
+		global lastAuthor
+
 		msgs = tuple(r.getMessages())[0]
 		for msg in msgs:
-			embed = discord.Embed(description=msg["message"][0], colour=COLOUR)
-			embed.set_author(name="[%s] %s" % (msg["teamName"][0], msg["name"][0]), icon_url=msg["icon"][0])
-			await self.bot.get_channel(relayChannel).send(embed=embed)
-		
+			author = [msg["steamID"][0], time.time()]
+
+			lastMsg = (await self.bot.get_channel(relayChannel).history(limit=1).flatten())[0]
+			if (
+				author[0] != lastAuthor[0] or
+				lastMsg.author.id != self.bot.user.id or
+				len(lastMsg.embeds) == 0 or
+				lastMsg.embeds[0].footer.text != author[0] or
+				author[1] - lastAuthor[1] > 420
+			):
+				embed = discord.Embed(description=msg["message"][0], colour=discord.Colour.from_rgb(*[int(val) for val in msg["teamColour"][0].split(",")]))
+				embed.set_footer(text=author[0])
+				embed.set_author(name="[%s] %s" % (msg["teamName"][0], msg["name"][0]), icon_url=msg["icon"][0])
+				await self.bot.get_channel(relayChannel).send(embed=embed)
+				lastAuthor = author
+			else:
+				embed = discord.Embed(description=lastMsg.embeds[0].description + "\n" + msg["message"][0], colour=discord.Colour.from_rgb(*[int(val) for val in msg["teamColour"][0].split(",")]))
+				embed.set_footer(text=author[0])
+				embed.set_author(name="[%s] %s" % (msg["teamName"][0], msg["name"][0]), icon_url=msg["icon"][0])
+				await lastMsg.edit(embed=embed)
+
 		# Handle join and leave events
 		# (joins first incase someone joins then leaves in the same tenth of a second, so the leave message always comes after the join)
 		joinsAndLeaves = tuple(r.getJoinsAndLeaves())

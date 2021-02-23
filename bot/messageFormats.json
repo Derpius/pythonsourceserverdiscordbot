@@ -1,0 +1,20 @@
+{
+	"joinMsgs": [
+		"`{player}` just joined the server!"
+	],
+	"leaveMsgs": [
+		"`{player}` just left the server"
+	],
+	"suicide": [
+		"`{victim}` killed themselves with `{inflictor}`"
+	],
+	"suicideNoWeapon": [
+		"`{victim}` killed themselves"
+	],
+	"kill": [
+		"`{attacker}` killed `{victim}` with `{inflictor}`"
+	],
+	"killNoWeapon": [
+		"`{attacker}` killed `{victim}`"
+	]
+}

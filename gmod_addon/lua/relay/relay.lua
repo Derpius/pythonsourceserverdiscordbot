@@ -10,7 +10,7 @@ end
 
 function onChat(plr, msg, teamCht)
 	http.Fetch("http://steamcommunity.com/profiles/" .. plr:SteamID64() .. "?xml=1", function(content, size)
-		local avatar = content:match("<avatarIcon><!%[CDATA%[(.-)%]%]></avatarIcon>")
+		local avatar = content:match("<avatarIcon><!%[CDATA%[(.-)%]%]></avatarIcon>") or ""
 		local teamColour = team.GetColor(plr:Team())
 		http.Post("http://" .. connection, {
 			type="message",
@@ -61,9 +61,22 @@ concommand.Add("startRelay", function(plr, cmd, args, argStr)
 		hook.Add("PlayerSay", "relayMessagesToDiscordBot", onChat)
 		hook.Add("PlayerInitialSpawn", "relayJoinsToDiscordBot", function(plr) onJoinOrLeave(plr:Nick(), "join") end)
 		hook.Add("PlayerDisconnected", "relayLeavesToDiscordBot", function(plr) onJoinOrLeave(plr:Nick(), "leave") end)
+		hook.Add("PlayerDeath", "relayDeathsToDiscordBot", function(vic, inf, atk)
+			http.Post("http://" .. connection, {
+				type="death",
+				victim=vic:Name(), inflictor=inf.Name and inf:Name() or inf:GetClass(), attacker=atk.Name and atk:Name() or atk:GetClass(),
+				suicide=vic == atk and "1" or "0", noweapon=inf:GetClass() == atk:GetClass() and "1" or "0"
+			}, function(result)
+				if verbose and result then print("Death POSTed to bot") end
+			end, function(reason)
+				if verbose then print("Death POST failed: ".. reason) end
+			end)
+		end)
+
+		hook.Add("PlayerDeath", "hookTest", function(vic, inf, atk) print(vic:Name(), inf.Name and inf:Name() or inf:GetClass(), atk.Name and atk:Name() or atk:GetClass()) end)
 
 		HTTP({
-			failed = function(reason) print("GET Failed: " .. reason) end,
+			failed = function() httpCallback(500, "none") end,
 			success = httpCallback,
 			method = "GET",
 			url = "http://" .. connection
@@ -79,6 +92,7 @@ concommand.Add("stopRelay", function(plr, cmd, args, argStr)
 		hook.Remove("PlayerSay", "relayMessagesToDiscordBot")
 		hook.Remove("PlayerInitialSpawn", "relayJoinsToDiscordBot")
 		hook.Remove("PlayerDisconnected", "relayLeavesToDiscordBot")
+		hook.Remove("PlayerDeath", "relayDeathsToDiscordBot")
 
 		print("Relay stopped")
 	end

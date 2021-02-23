@@ -33,13 +33,22 @@ for channelID, connectionObj in JSON.items():
 	JSON[channelID]["server"] = SourceServer(connectionObj["server"])
 	JSON[channelID]["time_since_down"] = -1
 
-# Load leave and join messages from json
-joinLeaveMsgs = json.load(open(os.path.join(os.path.dirname(os.path.realpath(__file__)), "joinLeaveMsgs.json"), "r"))
+# Load custom message formats from json
+messageFormats = json.load(open(os.path.join(os.path.dirname(os.path.realpath(__file__)), "messageFormats.json"), "r"))
 
-if "joinMsgs" not in joinLeaveMsgs.keys() or len(joinLeaveMsgs["joinMsgs"]) == 0:
-	joinLeaveMsgs["joinMsgs"] = ["%s just joined the server!"]
-if "leaveMsgs" not in joinLeaveMsgs.keys() or len(joinLeaveMsgs["leaveMsgs"]) == 0:
-	joinLeaveMsgs["leaveMsgs"] = ["%s just left the server"]
+if "joinMsgs" not in messageFormats.keys() or len(messageFormats["joinMsgs"]) == 0:
+	messageFormats["joinMsgs"] = ["`{player}` just joined the server!"]
+if "leaveMsgs" not in messageFormats.keys() or len(messageFormats["leaveMsgs"]) == 0:
+	messageFormats["leaveMsgs"] = ["`{player}` just left the server"]
+
+if "suicide" not in messageFormats.keys() or len(messageFormats["suicide"]) == 0:
+	messageFormats["suicide"] = ["`{victim}` killed themselves with `{inflictor}`"]
+if "suicideNoWeapon" not in messageFormats.keys() or len(messageFormats["suicideNoWeapon"]) == 0:
+	messageFormats["suicideNoWeapon"] = ["`{victim}` killed themselves"]
+if "kill" not in messageFormats.keys() or len(messageFormats["kill"]) == 0:
+	messageFormats["kill"] = ["`{attacker}` killed `{victim}` with `{inflictor}`"]
+if "killNoWeapon" not in messageFormats.keys() or len(messageFormats["killNoWeapon"]) == 0:
+	messageFormats["killNoWeapon"] = ["`{attacker}` killed `{victim}`"]
 
 # Init relay http server
 lastAuthor = ["", 0]
@@ -231,10 +240,21 @@ class ServerCommands(commands.Cog):
 		joinsAndLeaves = tuple(r.getJoinsAndLeaves())
 
 		for name in joinsAndLeaves[0]:
-			await self.bot.get_channel(relayChannel).send(random.choice(joinLeaveMsgs["joinMsgs"]) % name)
-		
+			await self.bot.get_channel(relayChannel).send(random.choice(messageFormats["joinMsgs"]).replace("{player}", name))
 		for name in joinsAndLeaves[1]:
-			await self.bot.get_channel(relayChannel).send(random.choice(joinLeaveMsgs["leaveMsgs"]) % name)
+			await self.bot.get_channel(relayChannel).send(random.choice(messageFormats["leaveMsgs"]).replace("{player}", name))
+
+		# Handle death events
+		deaths = tuple(r.getDeaths())[0]
+		for death in deaths:
+			if death[3] and not death[4]: # suicide with a weapon
+				await self.bot.get_channel(relayChannel).send(random.choice(messageFormats["suicide"]).replace("{victim}", death[0]).replace("{inflictor}", death[1]))
+			elif death[3]: # suicide without a weapon
+				await self.bot.get_channel(relayChannel).send(random.choice(messageFormats["suicideNoWeapon"]).replace("{victim}", death[0]))
+			elif not death[4]: # kill with a weapon
+				await self.bot.get_channel(relayChannel).send(random.choice(messageFormats["kill"]).replace("{victim}", death[0]).replace("{inflictor}", death[1]).replace("{attacker}", death[2]))
+			else: # kill without a weapon
+				await self.bot.get_channel(relayChannel).send(random.choice(messageFormats["killNoWeapon"]).replace("{victim}", death[0]).replace("{attacker}", death[2]))
 
 	@commands.Cog.listener()
 	async def on_message(self, msg: discord.Message):

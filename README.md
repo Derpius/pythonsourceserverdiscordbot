@@ -24,10 +24,10 @@ When running `bot.py`, the HTTP server is started immediately, however it won't 
 
 To connect to the relay using the GMod addon, make sure `-allowlocalhttp` is set to allow HTTP requests within the same LAN as the GMod server, and change `connection` in `init.lua` to something other than `localhost:8080` if you've set the bot to use a different port for the relay (in `.env`), or it's running on a different machine. Start up the server and type `startRelay` in console.  
 
-### Custom join and leave messages  
-You can define two sets of messages in `joinLeaveMsgs.json` for joining and leaving respectively, a message is chosen at random from either set depending on whether it's a join or leave event. You use `%s` to denote where the player's name will be insterted, failure to add `%s` will result in `TypeError: not all arguments converted during string formatting`.  
+### Custom message formats  
+You can define sets of messages in `messageFormats.json` for changing how things like deaths are formatted in Discord, a message is chosen at random from a set depending on the type. Format specifiers for these are encapsulated in curly brackets (`{}`) and are used in string replacement to insert player names and such.  
 
-Note, if either set is left blank, or either `joinMsgs` or `leaveMsgs` are deleted entirely, then they will be replaced with defaults individually.
+Note, if any set is left blank (or deleted entirely), then they will be replaced with defaults as needed.
 
 **WARNING:** Make sure you start the bot **before** starting the relay on the source server with `startRelay`, and make sure you close the relay on the source server with `stopRelay` **before** closing the bot.  
 

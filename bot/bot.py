@@ -262,7 +262,7 @@ class ServerCommands(commands.Cog):
 
 		if msg.author.colour.value == 0: colour = (255, 255, 255)
 		else: colour = msg.author.colour.to_rgb()
-		r.addMessage([msg.author.display_name, msg.content, colour])
+		r.addMessage([msg.author.display_name, msg.content, colour, msg.author.top_role.name])
 
 # User commands
 class UserCommands(commands.Cog):

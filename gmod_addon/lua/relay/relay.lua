@@ -32,14 +32,15 @@ function httpCallback(statusCode, content, headers)
 		JSON = util.JSONToTable(content)
 
 		for _, msg in pairs(JSON) do
-			print("[Discord] " .. msg[1] .. ": " .. msg[2])
+			print("[Discord | "..msg[4].."] " .. msg[1] .. ": " .. msg[2])
 			local colour = Color(msg[3][1], msg[3][2], msg[3][3])
 
 			net.Start("relayDiscordMessageReceived")
 				net.WriteString(msg[1])
 				net.WriteString(msg[2])
 				net.WriteColor(colour)
-				hook.Run("GModRelay.DiscordMsg", msg[1], msg[2])
+				net.WriteString(msg[4])
+				hook.Run("GModRelay.DiscordMsg", msg[1], msg[2], colour, msg[4])
 			net.Broadcast()
 		end
 	end

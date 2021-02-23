@@ -96,48 +96,48 @@ class ServerCommands(commands.Cog):
 
 		if ctx.channel.id in JSON.keys():
 			connection = (JSON[str(ctx.channel.id)]["server"]._ip, JSON[str(ctx.channel.id)]["server"]._port)
-			await ctx.send("This channel is already connected to %s:%d, use `!removeConnection` to remove it" % connection)
+			await ctx.message.reply("This channel is already connected to %s:%d, use `!removeConnection` to remove it" % connection)
 			return
 		
 		try: JSON.update({
 			str(ctx.channel.id): {"server": SourceServer(connectionString), "toNotify": [], "time_since_down": -1}
 		})
-		except SourceError as e: await ctx.send("Error, " + e.message.split(" | ")[1])
-		except ValueError: await ctx.send("Connection string invalid")
+		except SourceError as e: await ctx.message.reply("Error, " + e.message.split(" | ")[1])
+		except ValueError: await ctx.message.reply("Connection string invalid")
 		else:
-			if JSON[str(ctx.channel.id)]["server"].isClosed: await ctx.send("Failed to connect to server")
-			else: await ctx.send("Successfully connected to server!")
+			if JSON[str(ctx.channel.id)]["server"].isClosed: await ctx.message.reply("Failed to connect to server")
+			else: await ctx.message.reply("Successfully connected to server!")
 	
 	@commands.command()
 	@commands.has_permissions(manage_guild=True)
 	async def disconnect(self, ctx):
 		'''Removes this channel's connection to a source server'''
 
-		if str(ctx.channel.id) not in JSON.keys(): await ctx.send("This channel isn't connected to a server"); return
+		if str(ctx.channel.id) not in JSON.keys(): await ctx.message.reply("This channel isn't connected to a server"); return
 
 		del JSON[str(ctx.channel.id)]
-		await ctx.send("Connection removed successfully!")
+		await ctx.message.reply("Connection removed successfully!")
 	
 	@commands.command()
 	@commands.has_permissions(manage_guild=True)
 	async def close(self, ctx):
 		'''Closes the connection to the server'''
-		if JSON[str(ctx.channel.id)]["server"].isClosed: await ctx.send("Server is already closed"); return
+		if JSON[str(ctx.channel.id)]["server"].isClosed: await ctx.message.reply("Server is already closed"); return
 
 		JSON[str(ctx.channel.id)]["server"].close()
-		await ctx.send("Server closed successfully!\nReconnect with `!retry`")
+		await ctx.message.reply("Server closed successfully!\nReconnect with `!retry`")
 	
 	@commands.command()
 	@commands.has_permissions(manage_guild=True)
 	async def retry(self, ctx):
 		'''Attempts to reconnect to the server'''
-		if not JSON[str(ctx.channel.id)]["server"].isClosed: await ctx.send("Server is already connected"); return
+		if not JSON[str(ctx.channel.id)]["server"].isClosed: await ctx.message.reply("Server is already connected"); return
 
 		JSON[str(ctx.channel.id)]["server"].retry()
-		if JSON[str(ctx.channel.id)]["server"].isClosed: await ctx.send("Failed to reconnect to server")
+		if JSON[str(ctx.channel.id)]["server"].isClosed: await ctx.message.reply("Failed to reconnect to server")
 		else:
 			JSON[str(ctx.channel.id)]["time_since_down"] = -1
-			await ctx.send("Successfully reconnected to server!")
+			await ctx.message.reply("Successfully reconnected to server!")
 			
 	@commands.command()
 	@commands.has_permissions(manage_guild=True)
@@ -146,7 +146,7 @@ class ServerCommands(commands.Cog):
 		global relayChannel
 		relayChannel = ctx.channel.id
 
-		await ctx.send("Relay set successfully!")
+		await ctx.message.reply("Relay set successfully!")
 	
 	@commands.command()
 	@commands.has_permissions(manage_guild=True)
@@ -155,17 +155,17 @@ class ServerCommands(commands.Cog):
 		global relayChannel
 		relayChannel = None
 
-		await ctx.send("Relay disabled, use `!relayHere` to re-enable")
+		await ctx.message.reply("Relay disabled, use `!relayHere` to re-enable")
 
 	# Cog error handler
 	async def cog_command_error(self, ctx, error):
 		if isinstance(error, SourceError):
-			await ctx.send(f"A server error occured, see the logs for details")
+			await ctx.message.reply(f"A server error occured, see the logs for details")
 			print(error.message)
 		elif isinstance(error, MissingPermissions):
-			await ctx.send(f"You don't have permission to run that command <@{ctx.message.author.id}>")
+			await ctx.message.reply(f"You don't have permission to run that command <@{ctx.message.author.id}>")
 		elif isinstance(error, commands.errors.MissingRequiredArgument):
-			await ctx.send("Command missing required argument, see `!help`")
+			await ctx.message.reply("Command missing required argument, see `!help`")
 		else: raise error
 	
 	# Tasks
@@ -277,17 +277,17 @@ class UserCommands(commands.Cog):
 		ping = None
 		try: ping = JSON[str(ctx.channel.id)]["server"].ping()
 		except SourceError as e:
-			await ctx.send("Connection to server isn't closed internally, however failed to ping the server with exception `" + e.message + "`")
+			await ctx.message.reply("Connection to server isn't closed internally, however failed to ping the server with exception `" + e.message + "`")
 			return
 		
-		await ctx.send("Server online, ping %d. (Note that the ping is from the location of the bot)" % ping)
+		await ctx.message.reply("Server online, ping %d. (Note that the ping is from the location of the bot)" % ping)
 
 	@commands.command()
 	async def info(self, ctx, infoName: str = None):
 		'''Gets server info, all if no name specified\nSee https://github.com/100PXSquared/pythonsourceserver/wiki/SourceServer#the-info-property-values'''
 		try: info = JSON[str(ctx.channel.id)]["server"].info
 		except SourceError as e:
-			await ctx.send("Unable to get info")
+			await ctx.message.reply("Unable to get info")
 			print(e.message)
 			return
 		
@@ -309,11 +309,11 @@ class UserCommands(commands.Cog):
 
 			embed.set_footer(text="Keywords: " + info["keywords"])
 
-			await ctx.send(embed=embed)
+			await ctx.message.reply(embed=embed)
 			return
 		
 		if infoName in ("mode", "witnesses", "duration") and info["game"] != "The Ship":
-			await ctx.send("%s is only valid on servers running The Ship" % infoName)
+			await ctx.message.reply("%s is only valid on servers running The Ship" % infoName)
 			return
 		
 		if infoName not in info.keys():
@@ -322,9 +322,9 @@ class UserCommands(commands.Cog):
 				description="See [the wiki](https://github.com/100PXSquared/pythonsourceserver/wiki/SourceServer#the-info-property-values \"Python Source Server Query Library Wiki\")",
 				colour=COLOUR
 			)
-			await ctx.send(embed=embed); return
+			await ctx.message.reply(embed=embed); return
 		
-		await ctx.send("%s is " % infoName + str(info[infoName]))
+		await ctx.message.reply("%s is " % infoName + str(info[infoName]))
 	
 	@commands.command()
 	async def players(self, ctx):
@@ -335,12 +335,12 @@ class UserCommands(commands.Cog):
 			isTheShip = JSON[str(ctx.channel.id)]["server"].info["game"] == "The Ship"
 			srvName = JSON[str(ctx.channel.id)]["server"].info["name"]
 		except SourceError as e:
-			await ctx.send("Unable to get players")
+			await ctx.message.reply("Unable to get players")
 			print(e.message)
 			return
 
 		if count == 0:
-			await ctx.send("Doesn't look like there's anyone online at the moment, try again later")
+			await ctx.message.reply("Doesn't look like there's anyone online at the moment, try again later")
 			return
 		
 		embed = discord.Embed(colour=COLOUR)
@@ -355,7 +355,7 @@ class UserCommands(commands.Cog):
 				val += "Score: %d | Deaths: %d | Money: %d\n\n" % (player[2], player[4], player[5])
 
 		embed.add_field(name=f"Players on server {srvName}", value=val, inline=False)
-		await ctx.send(embed=embed)
+		await ctx.message.reply(embed=embed)
 
 	@commands.command()
 	async def rules(self, ctx, ruleName: str = None):
@@ -365,13 +365,13 @@ class UserCommands(commands.Cog):
 		'''
 		try: rules = JSON[str(ctx.channel.id)]["server"].rules
 		except SourceError as e:
-			await ctx.send("Unable to get rules")
+			await ctx.message.reply("Unable to get rules")
 			print(e.message)
 			return
 		
 		if ruleName is None:
 			if not ctx.channel.permissions_for(ctx.message.author).manage_guild:
-				await ctx.send(f"You don't have permission to show all rules for anti-spam reasons <@{ctx.message.author.id}>")
+				await ctx.message.reply(f"You don't have permission to show all rules for anti-spam reasons <@{ctx.message.author.id}>")
 				return
 			
 			embed = discord.Embed(
@@ -394,12 +394,12 @@ class UserCommands(commands.Cog):
 				count += 1
 
 			embed.set_footer(text="%d out of %d rules could be shown" % (count, len(rules.keys())))
-			await ctx.send(embed=embed)
+			await ctx.message.reply(embed=embed)
 			return
 		
-		if ruleName not in rules: await ctx.send("The rule '%s' doesn't exist" % ruleName); return
+		if ruleName not in rules: await ctx.message.reply("The rule '%s' doesn't exist" % ruleName); return
 
-		await ctx.send("{0}: {1}".format(ruleName, rules[ruleName]))
+		await ctx.message.reply("{0}: {1}".format(ruleName, rules[ruleName]))
 	
 	@commands.command()
 	async def notifyIfDown(self, ctx, personToNotify: Union[discord.User, discord.Member] = None):
@@ -410,16 +410,16 @@ class UserCommands(commands.Cog):
 
 		if personToNotify is not None:
 			if not ctx.channel.permissions_for(ctx.message.author).manage_guild and ctx.message.author.id != personToNotify.id:
-				await ctx.send(f"You don't have permission to set the notification status for other people <@{ctx.message.author.id}>")
+				await ctx.message.reply(f"You don't have permission to set the notification status for other people <@{ctx.message.author.id}>")
 				return
 		else: personToNotify = ctx.message.author
 
-		if personToNotify.bot: await ctx.send("Bots cannot be notified if the server is down"); return
+		if personToNotify.bot: await ctx.message.reply("Bots cannot be notified if the server is down"); return
 
-		if personToNotify.id in JSON[str(ctx.channel.id)]["toNotify"]: await ctx.send(f"Already configured to notify {personToNotify.name}")
+		if personToNotify.id in JSON[str(ctx.channel.id)]["toNotify"]: await ctx.message.reply(f"Already configured to notify {personToNotify.name}")
 		else:
 			JSON[str(ctx.channel.id)]["toNotify"].append(personToNotify.id)
-			await ctx.send(f"{personToNotify.name} will now be notified if the server is down")
+			await ctx.message.reply(f"{personToNotify.name} will now be notified if the server is down")
 	
 	@commands.command()
 	async def dontNotifyIfDown(self, ctx, personToNotNotify: Union[discord.User, discord.Member] = None):
@@ -430,14 +430,14 @@ class UserCommands(commands.Cog):
 
 		if personToNotNotify is not None:
 			if not ctx.channel.permissions_for(ctx.message.author).manage_guild and ctx.message.author.id != personToNotNotify.id:
-				await ctx.send(f"You don't have permission to set the notification status for other people <@{ctx.message.author.id}>")
+				await ctx.message.reply(f"You don't have permission to set the notification status for other people <@{ctx.message.author.id}>")
 				return
 		else: personToNotNotify = ctx.message.author
 
-		if personToNotNotify.id not in JSON[str(ctx.channel.id)]["toNotify"]: await ctx.send(f"Already configured to not notify {personToNotNotify.name}")
+		if personToNotNotify.id not in JSON[str(ctx.channel.id)]["toNotify"]: await ctx.message.reply(f"Already configured to not notify {personToNotNotify.name}")
 		else:
 			JSON[str(ctx.channel.id)]["toNotify"].remove(personToNotNotify.id)
-			await ctx.send(f"{personToNotNotify.name} will no longer be notified if the server is down")
+			await ctx.message.reply(f"{personToNotNotify.name} will no longer be notified if the server is down")
 	
 	@commands.command()
 	async def peopleToNotify(self, ctx):
@@ -459,14 +459,14 @@ class UserCommands(commands.Cog):
 			msg += (f"<@{ctx.message.author.id}>" if ctx.message.author.id == userID else "`" + member.name + "`") + ", "
 		
 		JSON[str(ctx.channel.id)]["toNotify"] = validIDs
-		await ctx.send(msg[:-2])
+		await ctx.message.reply(msg[:-2])
 	
 	# Command validity checks
 	async def cog_check(self, ctx):
 		if str(ctx.channel.id) not in JSON: return False
 
 		if JSON[str(ctx.channel.id)]["server"].isClosed:
-			await ctx.send("Server is closed, please try again later")
+			await ctx.message.reply("Server is closed, please try again later")
 			return False
 		
 		return True
@@ -474,11 +474,11 @@ class UserCommands(commands.Cog):
 	# Cog error handler
 	async def cog_command_error(self, ctx, error):
 		if isinstance(error, SourceError):
-			await ctx.send(f"A server error occured, see the logs for details")
+			await ctx.message.reply(f"A server error occured, see the logs for details")
 			print(error.message)
 		elif isinstance(error, commands.errors.CheckFailure): pass
 		elif isinstance(error, commands.errors.MissingRequiredArgument):
-			await ctx.send("Command missing required argument, see `!help`")
+			await ctx.message.reply("Command missing required argument, see `!help`")
 		else: raise error
 
 bot = commands.Bot(PREFIX)

@@ -1,0 +1,33 @@
+<!doctype html>
+
+<html lang="en">
+<head>
+	<meta charset="utf-8">
+
+	<title>GMod ChatLib</title>
+
+	<link rel="stylesheet" href="styles.css?v=1.1">
+</head>
+
+<body>
+	<div id="message-container">
+		<div class="message">
+			<img class="avatar" src="https://cdn.akamai.steamstatic.com/steamcommunity/public/images/avatars/1c/1c7c3edea154c342d2e2e171c1f77702421639be_full.jpg">
+			<div class="content">
+				<div class="message-header"><span class="username">{USERNAME}</span><span class="timestamp">24/02/2021 03:47</span></div>
+				<div class="message-text">{CONTENT}</div>
+			</div>
+		</div>
+	</div>
+	<div id="toolbar">
+		<div id="text-entry-container" class="form-box">
+			<input class="form-control" id="text-entry" type="text" name="chat" placeholder="Chat">
+		</div>
+		<div id="emotes">
+			<button class="btn" id="emote-button" type="button"><img src="assets/emoji.svg"></button>
+		</div>
+	</div>
+
+	<script src="scripts.js"></script>
+</body>
+</html>

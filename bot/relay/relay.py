@@ -11,6 +11,7 @@ sourceMsgs = []
 joins = []
 leaves = []
 deaths = []
+custom = []
 
 def relayThread(port):
 	def onExit(filepath: str):
@@ -83,6 +84,9 @@ class Handler(BaseHTTPRequestHandler):
 		elif request["type"][0] == "death":
 			global deaths
 			deaths.append((request["victim"][0], request["inflictor"][0], request["attacker"][0], request["suicide"][0] == "1", request["noweapon"][0] == "1"))
+		elif request["type"][0] == "custom":
+			global custom
+			custom.append(request["body"][0])
 		else:
 			print("Request type param was not valid, got %s" % request["type"][0])
 			self.send_error(400, "Bad Request", "Request type param was not valid")
@@ -124,6 +128,11 @@ class Relay(object):
 		global deaths
 		yield deaths
 		deaths = []
+		
+	def getCustom(self):
+		global custom
+		yield custom
+		custom = []
 
 if __name__ == "__main__":
 	r = Relay(8080)

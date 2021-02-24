@@ -234,15 +234,11 @@ class ServerCommands(commands.Cog):
 				embed.set_footer(text=author[0])
 				embed.set_author(name="[%s] %s" % (msg["teamName"][0], msg["name"][0]), icon_url=msg["icon"][0])
 				await lastMsg.edit(embed=embed)
-
-		# Handle join and leave events
-		# (joins first incase someone joins then leaves in the same tenth of a second, so the leave message always comes after the join)
-		joinsAndLeaves = tuple(r.getJoinsAndLeaves())
-
-		for name in joinsAndLeaves[0]:
-			await self.bot.get_channel(relayChannel).send(random.choice(messageFormats["joinMsgs"]).replace("{player}", name))
-		for name in joinsAndLeaves[1]:
-			await self.bot.get_channel(relayChannel).send(random.choice(messageFormats["leaveMsgs"]).replace("{player}", name))
+		
+		# Handle custom events
+		custom = tuple(r.getCustom())[0]
+		for body in custom:
+			await self.bot.get_channel(relayChannel).send(body)
 
 		# Handle death events
 		deaths = tuple(r.getDeaths())[0]
@@ -255,6 +251,15 @@ class ServerCommands(commands.Cog):
 				await self.bot.get_channel(relayChannel).send(random.choice(messageFormats["kill"]).replace("{victim}", death[0]).replace("{inflictor}", death[1]).replace("{attacker}", death[2]))
 			else: # kill without a weapon
 				await self.bot.get_channel(relayChannel).send(random.choice(messageFormats["killNoWeapon"]).replace("{victim}", death[0]).replace("{attacker}", death[2]))
+
+		# Handle join and leave events
+		# (joins first incase someone joins then leaves in the same tenth of a second, so the leave message always comes after the join)
+		joinsAndLeaves = tuple(r.getJoinsAndLeaves())
+
+		for name in joinsAndLeaves[0]:
+			await self.bot.get_channel(relayChannel).send(random.choice(messageFormats["joinMsgs"]).replace("{player}", name))
+		for name in joinsAndLeaves[1]:
+			await self.bot.get_channel(relayChannel).send(random.choice(messageFormats["leaveMsgs"]).replace("{player}", name))
 
 	@commands.Cog.listener()
 	async def on_message(self, msg: discord.Message):

@@ -4,9 +4,9 @@ local toggle = false
 
 function onJoinOrLeave(plrNick, reqType)
 	http.Post("http://" .. connection, {type=reqType, name=plrNick}, function(result)
-		if result then print("Join/Leave event POSTed to bot") end
+		if verbose and result then print("Join/Leave event POSTed to bot") end
 	end, function(reason)
-		print("Join/Leave POST failed: "..reason)
+		if verbose then print("Join/Leave POST failed: "..reason) end
 	end)
 end
 

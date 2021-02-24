@@ -58,7 +58,7 @@ function httpCallback(statusCode, content, headers)
 end
 
 concommand.Add("startRelay", function(plr, cmd, args, argStr)
-	if not plr:IsPlayer() then
+	if not plr:IsPlayer() and not toggle then
 		toggle = true
 		http.Post("http://" .. connection, {type="custom", body="Relay client connected!"}, function(result)
 			if verbose and result then print("Connection message POSTed to bot") end
@@ -94,7 +94,7 @@ concommand.Add("startRelay", function(plr, cmd, args, argStr)
 	end
 end)
 concommand.Add("stopRelay", function(plr, cmd, args, argStr)
-	if not plr:IsPlayer() then
+	if not plr:IsPlayer() and toggle then
 		toggle = false
 		http.Post("http://" .. connection, {type="custom", body="Relay client disconnected"}, function(result)
 			if verbose and result then print("Disconnect message POSTed to bot") end

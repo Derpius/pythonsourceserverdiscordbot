@@ -4,7 +4,7 @@ function onJoinOrLeave(plrNick, reqType)
 	http.Post("http://" .. connection, {type=reqType, name=plrNick}, function(result)
 		if result then print("Join/Leave event POSTed to bot") end
 	end, function(reason)
-		print("Join/Leave POST failed: ".. reason)
+		print("Join/Leave POST failed: "..reason)
 	end)
 end
 
@@ -20,7 +20,7 @@ function onChat(plr, msg, teamCht)
 		}, function(result)
 			if verbose and result then print("Message POSTed to bot") end
 		end, function(reason)
-			if verbose then print("Message POST failed: ".. reason) end
+			if verbose then print("Message POST failed: "..reason) end
 		end)
 	end)
 end
@@ -58,6 +58,11 @@ end
 concommand.Add("startRelay", function(plr, cmd, args, argStr)
 	if not plr:IsPlayer() then
 		toggle = true
+		http.Post("http://" .. connection, {type="custom", body="Relay client connected!"}, function(result)
+			if verbose and result then print("Connection message POSTed to bot") end
+		end, function(reason)
+			if verbose then print("Connection message POST failed: "..reason) end
+		end)
 
 		hook.Add("PlayerSay", "relayMessagesToDiscordBot", onChat)
 		hook.Add("PlayerInitialSpawn", "relayJoinsToDiscordBot", function(plr) onJoinOrLeave(plr:Nick(), "join") end)
@@ -70,7 +75,7 @@ concommand.Add("startRelay", function(plr, cmd, args, argStr)
 			}, function(result)
 				if verbose and result then print("Death POSTed to bot") end
 			end, function(reason)
-				if verbose then print("Death POST failed: ".. reason) end
+				if verbose then print("Death POST failed: "..reason) end
 			end)
 		end)
 
@@ -89,6 +94,11 @@ end)
 concommand.Add("stopRelay", function(plr, cmd, args, argStr)
 	if not plr:IsPlayer() then
 		toggle = false
+		http.Post("http://" .. connection, {type="custom", body="Relay client disconnected"}, function(result)
+			if verbose and result then print("Disconnect message POSTed to bot") end
+		end, function(reason)
+			if verbose then print("Disconnect message POST failed: "..reason) end
+		end)
 
 		hook.Remove("PlayerSay", "relayMessagesToDiscordBot")
 		hook.Remove("PlayerInitialSpawn", "relayJoinsToDiscordBot")

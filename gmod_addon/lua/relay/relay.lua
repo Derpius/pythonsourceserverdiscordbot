@@ -1,3 +1,5 @@
+local connection = "192.168.0.97:8080"
+local verbose = false
 local toggle = false
 
 function onJoinOrLeave(plrNick, reqType)

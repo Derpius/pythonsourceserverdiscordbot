@@ -131,7 +131,7 @@ class ServerCommands(commands.Cog):
 
 		JSON[channelID]["server"].close()
 		await ctx.message.reply("Server closed successfully!\nReconnect with `!retry`")
-	
+
 	@commands.command()
 	@commands.has_permissions(manage_guild=True)
 	async def retry(self, ctx):
@@ -147,24 +147,25 @@ class ServerCommands(commands.Cog):
 			JSON[channelID]["time_since_down"] = -1
 			await ctx.message.reply("Successfully reconnected to server!")
 
-			# Create a list of all valid user IDs
-			# This works by appending to this list every valid ID, then setting the toNotify list to this list of valid IDs
-			validIDs = []
+			if channelID in autoclosed:
+				# Create a list of all valid user IDs
+				# This works by appending to this list every valid ID, then setting the toNotify list to this list of valid IDs
+				validIDs = []
 
-			# For every person set to be notified, send them a DM to say the server is back online
-			for personToNotify in serverCon["toNotify"]:
-				member = await ctx.guild.fetch_member(personToNotify)
-				if member is None: continue
+				# For every person set to be notified, send them a DM to say the server is back online
+				for personToNotify in serverCon["toNotify"]:
+					member = await ctx.guild.fetch_member(personToNotify)
+					if member is None: continue
 
-				validIDs.append(personToNotify)
+					validIDs.append(personToNotify)
 
-				await member.send(f'''
-				The Source Dedicated Server `{serverCon["server"]._info["name"] if serverCon["server"]._info != {} else "unknown"}` @ `{serverCon["server"]._ip}:{serverCon["server"]._port}` assigned to this bot just came back up!\n*You are receiving this message as you are set to be notified if the server goes down at `{ctx.guild.name}`*
-				''')
+					await member.send(f'''
+					The Source Dedicated Server `{serverCon["server"]._info["name"] if serverCon["server"]._info != {} else "unknown"}` @ `{serverCon["server"]._ip}:{serverCon["server"]._port}` assigned to this bot just came back up!\n*You are receiving this message as you are set to be notified if the server goes down at `{ctx.guild.name}`*
+					''')
 
-			JSON[channelID]["toNotify"] = validIDs
-			autoclosed.remove(channelID)
-			
+				JSON[channelID]["toNotify"] = validIDs
+				autoclosed.remove(channelID)
+
 	@commands.command()
 	@commands.has_permissions(manage_guild=True)
 	async def relayHere(self, ctx):
@@ -173,7 +174,7 @@ class ServerCommands(commands.Cog):
 		relayChannel = ctx.channel.id
 
 		await ctx.message.reply("Relay set successfully!")
-	
+
 	@commands.command()
 	@commands.has_permissions(manage_guild=True)
 	async def disableRelay(self, ctx):
@@ -193,13 +194,13 @@ class ServerCommands(commands.Cog):
 		elif isinstance(error, commands.errors.MissingRequiredArgument):
 			await ctx.message.reply("Command missing required argument, see `!help`")
 		else: raise error
-	
+
 	# Tasks
 	def cog_unload(self):
 		# pylint: disable=no-member
 		self.pingServer.cancel() # PyLint sees this as an error, even though it's not
 		self.getFromRelay.cancel()
-	
+
 	@tasks.loop(minutes=1)
 	async def pingServer(self):
 		await self.bot.wait_until_ready()
@@ -209,9 +210,10 @@ class ServerCommands(commands.Cog):
 				if not channelID in autoclosed: continue # If the server was closed manually just continue
 				
 				# Attempt to retry the connection to the server
-				try: serverCon["server"].retry()
-				except SourceError: continue # If the attempt failed then continue
-				else:
+				serverCon["server"].retry()
+				if not serverCon["server"].isClosed:
+					JSON[channelID]["time_since_down"] = -1
+
 					# Create a list of all valid user IDs
 					# This works by appending to this list every valid ID, then setting the toNotify list to this list of valid IDs
 					validIDs = []
@@ -230,6 +232,7 @@ class ServerCommands(commands.Cog):
 
 					JSON[channelID]["toNotify"] = validIDs
 					autoclosed.remove(channelID)
+				continue
 			try: serverCon["server"].ping()
 			except SourceError:
 				JSON[channelID]["time_since_down"] += 1

@@ -466,42 +466,42 @@ class UserCommands(commands.Cog):
 		await ctx.message.reply("{0}: {1}".format(ruleName, rules[ruleName]))
 
 	@commands.command()
-	async def notifyIfDown(self, ctx, personToNotify: Union[discord.User, discord.Member] = None):
+	async def notifyIfDown(self, ctx, target: Union[discord.User, discord.Member] = None):
 		'''
 		Tells the bot to notify you or a person of your choice when the server is down.
 		Passing a person without you having manage server perms is not allowed (unless that person is yourself).
 		'''
-
-		if personToNotify is not None:
-			if not ctx.channel.permissions_for(ctx.message.author).manage_guild and ctx.message.author.id != personToNotify.id:
+		affectingSelf = target is None
+		if target is not None:
+			if not ctx.channel.permissions_for(ctx.message.author).manage_guild and ctx.message.author.id != target.id:
 				await ctx.message.reply(f"You don't have permission to set the notification status for other people <@{ctx.message.author.id}>")
 				return
-		else: personToNotify = ctx.message.author
+		else: target = ctx.message.author
 
-		if personToNotify.bot: await ctx.message.reply("Bots cannot be notified if the server is down"); return
+		if target.bot: await ctx.message.reply("Bots cannot be notified if the server is down"); return
 
-		if personToNotify.id in JSON[str(ctx.channel.id)]["toNotify"]: await ctx.message.reply(f"Already configured to notify {personToNotify.name}")
+		if target.id in JSON[str(ctx.channel.id)]["toNotify"]: await ctx.message.reply("Already configured to notify " + ("you" if affectingSelf else f"<@{target.id}>"))
 		else:
-			JSON[str(ctx.channel.id)]["toNotify"].append(personToNotify.id)
-			await ctx.message.reply(f"{personToNotify.name} will now be notified if the server is down")
+			JSON[str(ctx.channel.id)]["toNotify"].append(target.id)
+			await ctx.message.reply(("You" if affectingSelf else f"<@{target.id}>") + " will now be notified if the server is down")
 
 	@commands.command()
-	async def dontNotifyIfDown(self, ctx, personToNotNotify: Union[discord.User, discord.Member] = None):
+	async def dontNotifyIfDown(self, ctx, target: Union[discord.User, discord.Member] = None):
 		'''
 		Tells the bot to stop notifying you or a person of your choice when the server is down.
 		Passing a person without you having manage server perms is not allowed (unless that person is yourself).
 		'''
-
-		if personToNotNotify is not None:
-			if not ctx.channel.permissions_for(ctx.message.author).manage_guild and ctx.message.author.id != personToNotNotify.id:
+		affectingSelf = target is None
+		if target is not None:
+			if not ctx.channel.permissions_for(ctx.message.author).manage_guild and ctx.message.author.id != target.id:
 				await ctx.message.reply(f"You don't have permission to set the notification status for other people <@{ctx.message.author.id}>")
 				return
-		else: personToNotNotify = ctx.message.author
+		else: target = ctx.message.author
 
-		if personToNotNotify.id not in JSON[str(ctx.channel.id)]["toNotify"]: await ctx.message.reply(f"Already configured to not notify {personToNotNotify.name}")
+		if target.id not in JSON[str(ctx.channel.id)]["toNotify"]: await ctx.message.reply("Already configured to not notify " + ("you" if affectingSelf else f"<@{target.id}>"))
 		else:
-			JSON[str(ctx.channel.id)]["toNotify"].remove(personToNotNotify.id)
-			await ctx.message.reply(f"{personToNotNotify.name} will no longer be notified if the server is down")
+			JSON[str(ctx.channel.id)]["toNotify"].remove(target.id)
+			await ctx.message.reply(("You" if affectingSelf else f"<@{target.id}>") + " will no longer be notified if the server is down")
 
 	@commands.command()
 	async def peopleToNotify(self, ctx):

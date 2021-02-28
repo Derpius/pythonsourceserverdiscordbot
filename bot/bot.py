@@ -79,6 +79,9 @@ def formatTimedelta(delta: timedelta) -> str:
 
 	return datetimeStr
 
+# List for logging if a server was closed automatically or not
+autoclosed = set()
+
 # Server admin commands (Note, these commands can be run in any channel by people who have manage server perms, even when told not to run)
 class ServerCommands(commands.Cog):
 	'''Server commands to be used by anyone with manager server permissions'''
@@ -132,12 +135,31 @@ class ServerCommands(commands.Cog):
 	async def retry(self, ctx):
 		'''Attempts to reconnect to the server'''
 		if not JSON[str(ctx.channel.id)]["server"].isClosed: await ctx.message.reply("Server is already connected"); return
+		serverCon = JSON[str(ctx.channel.id)]
 
-		JSON[str(ctx.channel.id)]["server"].retry()
-		if JSON[str(ctx.channel.id)]["server"].isClosed: await ctx.message.reply("Failed to reconnect to server")
+		serverCon["server"].retry()
+		if serverCon["server"].isClosed: await ctx.message.reply("Failed to reconnect to server")
 		else:
 			JSON[str(ctx.channel.id)]["time_since_down"] = -1
 			await ctx.message.reply("Successfully reconnected to server!")
+
+			# Create a list of all valid user IDs
+			# This works by appending to this list every valid ID, then setting the toNotify list to this list of valid IDs
+			validIDs = []
+
+			# For every person set to be notified, send them a DM to say the server is back online
+			for personToNotify in serverCon["toNotify"]:
+				member = await ctx.guild.fetch_member(personToNotify)
+				if member is None: continue
+
+				validIDs.append(personToNotify)
+
+				await member.send(f'''
+				The Source Dedicated Server `{serverCon["server"]._info["name"] if serverCon["server"]._info != {} else "unknown"}` @ `{serverCon["server"]._ip}:{serverCon["server"]._port}` assigned to this bot just came back up!\n*You are receiving this message as you are set to be notified if the server goes down at `{ctx.guild.name}`*
+				''')
+
+			JSON[str(ctx.channel.id)]["toNotify"] = validIDs
+			autoclosed.remove(str(ctx.channel.id))
 			
 	@commands.command()
 	@commands.has_permissions(manage_guild=True)
@@ -179,7 +201,31 @@ class ServerCommands(commands.Cog):
 		await self.bot.wait_until_ready()
 
 		for channelID, serverCon in JSON.items():
-			if serverCon["server"].isClosed: return
+			if serverCon["server"].isClosed:
+				if not channelID in autoclosed: continue # If the server was closed manually just continue
+				
+				# Attempt to retry the connection to the server
+				try: serverCon["server"].retry()
+				except SourceError: continue # If the attempt failed then continue
+				else:
+					# Create a list of all valid user IDs
+					# This works by appending to this list every valid ID, then setting the toNotify list to this list of valid IDs
+					validIDs = []
+
+					# For every person set to be notified, send them a DM to say the server is back online
+					for personToNotify in serverCon["toNotify"]:
+						member = await self.bot.get_channel(int(channelID)).guild.fetch_member(personToNotify)
+						if member is None: continue
+
+						validIDs.append(personToNotify)
+
+						guildName = self.bot.get_channel(int(channelID)).guild.name
+						await member.send(f'''
+						The Source Dedicated Server `{serverCon["server"]._info["name"] if serverCon["server"]._info != {} else "unknown"}` @ `{serverCon["server"]._ip}:{serverCon["server"]._port}` assigned to this bot just came back up!\n*You are receiving this message as you are set to be notified if the server goes down at `{guildName}`*
+						''')
+
+					JSON[channelID]["toNotify"] = validIDs
+					autoclosed.remove(channelID)
 			try: serverCon["server"].ping()
 			except SourceError:
 				JSON[channelID]["time_since_down"] += 1
@@ -197,14 +243,15 @@ class ServerCommands(commands.Cog):
 
 					guildName = self.bot.get_channel(int(channelID)).guild.name
 					await member.send(f'''
-					**WARNING:** The Source Dedicated Server `{serverCon["server"]._info["name"] if serverCon["server"]._info != {} else "unknown"}` @ {serverCon["server"]._ip}:{serverCon["server"]._port} assigned to this bot is down!\n*You are receiving this message as you are set to be notified if the server goes down at {guildName}*
+					**WARNING:** The Source Dedicated Server `{serverCon["server"]._info["name"] if serverCon["server"]._info != {} else "unknown"}` @ `{serverCon["server"]._ip}:{serverCon["server"]._port}` assigned to this bot is down!\n*You are receiving this message as you are set to be notified if the server goes down at `{guildName}`*
 					''')
-				
+
 				JSON[channelID]["toNotify"] = validIDs
 				serverCon["server"].close()
+				autoclosed.add(channelID)
 			else:
 				if JSON[channelID]["time_since_down"] != -1: JSON[channelID]["time_since_down"] = -1
-	
+
 	@tasks.loop(seconds=0.1)
 	async def getFromRelay(self):
 		await self.bot.wait_until_ready()
@@ -234,7 +281,7 @@ class ServerCommands(commands.Cog):
 				embed.set_footer(text=author[0])
 				embed.set_author(name="[%s] %s" % (msg["teamName"][0], msg["name"][0]), icon_url=msg["icon"][0])
 				await lastMsg.edit(embed=embed)
-		
+
 		# Handle custom events
 		custom = tuple(r.getCustom())[0]
 		for body in custom:
@@ -321,17 +368,17 @@ class UserCommands(commands.Cog):
 
 			await ctx.message.reply(embed=embed)
 			return
-		
+
 		if infoName in ("mode", "witnesses", "duration") and info["game"] != "The Ship":
 			await ctx.message.reply(f"`{infoName}` is only valid on servers running The Ship")
 			return
-		
+
 		if infoName not in info.keys():
 			await ctx.message.reply(f"'{infoName}' is invalid, see https://github.com/100PXSquared/pythonsourceserver/wiki/SourceServer#the-info-property-values for a list of valid properties")
 			return
-		
+
 		await ctx.message.reply(f"`{infoName}` is `{info[infoName]}`")
-	
+
 	@commands.command()
 	async def players(self, ctx):
 		'''Gets all players on the server'''
@@ -348,7 +395,7 @@ class UserCommands(commands.Cog):
 		if count == 0:
 			await ctx.message.reply("Doesn't look like there's anyone online at the moment, try again later")
 			return
-		
+
 		embed = discord.Embed(colour=COLOUR)
 		val = ""
 		for player in plrs:
@@ -374,12 +421,12 @@ class UserCommands(commands.Cog):
 			await ctx.message.reply("Unable to get rules")
 			print(e.message)
 			return
-		
+
 		if ruleName is None:
 			if not ctx.channel.permissions_for(ctx.message.author).manage_guild:
 				await ctx.message.reply(f"You don't have permission to show all rules for anti-spam reasons <@{ctx.message.author.id}>")
 				return
-			
+
 			embed = discord.Embed(
 				title="Server Rules",
 				description="All rules the server uses\n*Note: embeds are capped at 6000 chars, so you may not see all rules*",
@@ -395,18 +442,18 @@ class UserCommands(commands.Cog):
 					page += 1
 					embed.add_field(name=u"\u200B\n" + str(page) + "\n" + u"\u00AF" * 10, value=ruleString[2:], inline=False)
 					ruleString = ""
-				
+
 				ruleString += ", {0}: {1}".format(key, val)
 				count += 1
 
 			embed.set_footer(text="%d out of %d rules could be shown" % (count, len(rules.keys())))
 			await ctx.message.reply(embed=embed)
 			return
-		
+
 		if ruleName not in rules: await ctx.message.reply("The rule '%s' doesn't exist" % ruleName); return
 
 		await ctx.message.reply("{0}: {1}".format(ruleName, rules[ruleName]))
-	
+
 	@commands.command()
 	async def notifyIfDown(self, ctx, personToNotify: Union[discord.User, discord.Member] = None):
 		'''
@@ -426,7 +473,7 @@ class UserCommands(commands.Cog):
 		else:
 			JSON[str(ctx.channel.id)]["toNotify"].append(personToNotify.id)
 			await ctx.message.reply(f"{personToNotify.name} will now be notified if the server is down")
-	
+
 	@commands.command()
 	async def dontNotifyIfDown(self, ctx, personToNotNotify: Union[discord.User, discord.Member] = None):
 		'''
@@ -444,7 +491,7 @@ class UserCommands(commands.Cog):
 		else:
 			JSON[str(ctx.channel.id)]["toNotify"].remove(personToNotNotify.id)
 			await ctx.message.reply(f"{personToNotNotify.name} will no longer be notified if the server is down")
-	
+
 	@commands.command()
 	async def peopleToNotify(self, ctx):
 		'''
@@ -467,10 +514,10 @@ class UserCommands(commands.Cog):
 
 			validIDs.append(userID)
 			msg += (f"<@{ctx.message.author.id}>" if ctx.message.author.id == userID else "`" + member.name + "`") + ", "
-		
+
 		JSON[str(ctx.channel.id)]["toNotify"] = validIDs
 		await ctx.message.reply(msg[:-2])
-	
+
 	# Command validity checks
 	async def cog_check(self, ctx):
 		if str(ctx.channel.id) not in JSON: return False
@@ -478,7 +525,7 @@ class UserCommands(commands.Cog):
 		if JSON[str(ctx.channel.id)]["server"].isClosed:
 			await ctx.message.reply("Server is closed, please try again later")
 			return False
-		
+
 		return True
 
 	# Cog error handler

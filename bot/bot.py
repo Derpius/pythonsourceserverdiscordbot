@@ -98,18 +98,22 @@ class ServerCommands(commands.Cog):
 		'''Adds a connection to a source server to this channel'''
 		channelID = str(ctx.channel.id)
 		if channelID in JSON.keys():
-			connection = (JSON[channelID]["server"]._ip, JSON[channelID]["server"]._port)
-			await ctx.message.reply("This channel is already connected to %s:%d, use `!removeConnection` to remove it" % connection)
+			existingConnection = f"{JSON[channelID]['server']._ip}:{JSON[channelID]['server']._port}"
+			if connectionString == existingConnection:
+				await ctx.message.reply("This channel is already connected to that server")
+				return
+			await ctx.message.reply(f"This channel is already connected to `{existingConnection}`, use `!disconnect` to connect to a different server")
 			return
 
-		try: JSON.update({
-			channelID: {"server": SourceServer(connectionString), "toNotify": [], "time_since_down": -1}
-		})
+		server = None
+		try: server = SourceServer(connectionString)
 		except SourceError as e: await ctx.message.reply("Error, " + e.message.split(" | ")[1])
 		except ValueError: await ctx.message.reply("Connection string invalid")
 		else:
-			if JSON[channelID]["server"].isClosed: await ctx.message.reply("Failed to connect to server")
-			else: await ctx.message.reply("Successfully connected to server!")
+			if server.isClosed: await ctx.message.reply("Failed to connect to server")
+			else:
+				JSON.update({channelID: {"server": server, "toNotify": [], "time_since_down": -1}})
+				await ctx.message.reply("Successfully connected to server!")
 
 	@commands.command()
 	@commands.has_permissions(manage_guild=True)

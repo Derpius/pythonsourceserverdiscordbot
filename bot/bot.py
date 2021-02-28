@@ -164,7 +164,7 @@ class ServerCommands(commands.Cog):
 					validIDs.append(personToNotify)
 
 					await member.send(f'''
-					The Source Dedicated Server `{serverCon["server"]._info["name"] if serverCon["server"]._info != {} else "unknown"}` @ `{serverCon["server"]._ip}:{serverCon["server"]._port}` assigned to this bot just came back up!\n*You are receiving this message as you are set to be notified if the server goes down at `{ctx.guild.name}`*
+					The Source Dedicated Server `{serverCon["server"]._info["name"] if serverCon["server"]._info != {} else "unknown"}` @ `{serverCon["server"]._ip}:{serverCon["server"]._port}` assigned to this bot just came back up!\n*You are receiving this message as you are set to be notified regarding server outage at `{ctx.guild.name}`*
 					''')
 
 				JSON[channelID]["toNotify"] = validIDs
@@ -231,7 +231,7 @@ class ServerCommands(commands.Cog):
 
 						guildName = self.bot.get_channel(int(channelID)).guild.name
 						await member.send(f'''
-						The Source Dedicated Server `{serverCon["server"]._info["name"] if serverCon["server"]._info != {} else "unknown"}` @ `{serverCon["server"]._ip}:{serverCon["server"]._port}` assigned to this bot just came back up!\n*You are receiving this message as you are set to be notified if the server goes down at `{guildName}`*
+						The Source Dedicated Server `{serverCon["server"]._info["name"] if serverCon["server"]._info != {} else "unknown"}` @ `{serverCon["server"]._ip}:{serverCon["server"]._port}` assigned to this bot just came back up!\n*You are receiving this message as you are set to be notified regarding server outage at `{guildName}`*
 						''')
 
 					JSON[channelID]["toNotify"] = validIDs
@@ -254,7 +254,7 @@ class ServerCommands(commands.Cog):
 
 					guildName = self.bot.get_channel(int(channelID)).guild.name
 					await member.send(f'''
-					**WARNING:** The Source Dedicated Server `{serverCon["server"]._info["name"] if serverCon["server"]._info != {} else "unknown"}` @ `{serverCon["server"]._ip}:{serverCon["server"]._port}` assigned to this bot is down!\n*You are receiving this message as you are set to be notified if the server goes down at `{guildName}`*
+					**WARNING:** The Source Dedicated Server `{serverCon["server"]._info["name"] if serverCon["server"]._info != {} else "unknown"}` @ `{serverCon["server"]._ip}:{serverCon["server"]._port}` assigned to this bot is down!\n*You are receiving this message as you are set to be notified regarding server outage at `{guildName}`*
 					''')
 
 				JSON[channelID]["toNotify"] = validIDs
@@ -506,18 +506,18 @@ class UserCommands(commands.Cog):
 	@commands.command()
 	async def peopleToNotify(self, ctx):
 		'''
-		Lists all people set to be notified, highlighting the person who runs the command
+		Lists all people set to be notified
 		'''
 
 		if len(JSON[str(ctx.channel.id)]["toNotify"]) == 0: # If no one is set to be notified don't bother building a message
-			await ctx.message.reply("No one is set to be notified if down\n*use `!notifyIfDown` to mark yourself to be notified, and `!dontNotifyIfDown` to disable notifications*")
+			await ctx.message.reply("No one is set to be notified regarding server outage\n*use `!notify` to mark yourself to be notified, and `!dontNotify` to disable notifications*")
 			return
 
 		# As with the actual ping task, we save a list of valid IDs and replace the existing list with this one after the loop
 		validIDs = []
 
 		# Message to be sent
-		msg = "*The following people are set to be notified when the Source server linked to this channel goes down:*\n"
+		msg = "*The following people are set to be notified regarding outage from the server linked to this channel:*\n"
 
 		for userID in JSON[str(ctx.channel.id)]["toNotify"]:
 			member = await ctx.guild.fetch_member(userID)

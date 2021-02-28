@@ -466,9 +466,9 @@ class UserCommands(commands.Cog):
 		await ctx.message.reply("{0}: {1}".format(ruleName, rules[ruleName]))
 
 	@commands.command()
-	async def notifyIfDown(self, ctx, target: Union[discord.User, discord.Member] = None):
+	async def notify(self, ctx, target: Union[discord.User, discord.Member] = None):
 		'''
-		Tells the bot to notify you or a person of your choice when the server is down.
+		Tells the bot to notify you or a person of your choice regarding server outage (loss of server connection, and reconnection to a dropped server).  
 		Passing a person without you having manage server perms is not allowed (unless that person is yourself).
 		'''
 		affectingSelf = target is None
@@ -478,17 +478,17 @@ class UserCommands(commands.Cog):
 				return
 		else: target = ctx.message.author
 
-		if target.bot: await ctx.message.reply("Bots cannot be notified if the server is down"); return
+		if target.bot: await ctx.message.reply("Bots cannot be notified regarding server outage"); return
 
 		if target.id in JSON[str(ctx.channel.id)]["toNotify"]: await ctx.message.reply("Already configured to notify " + ("you" if affectingSelf else f"<@{target.id}>"))
 		else:
 			JSON[str(ctx.channel.id)]["toNotify"].append(target.id)
-			await ctx.message.reply(("You" if affectingSelf else f"<@{target.id}>") + " will now be notified if the server is down")
+			await ctx.message.reply(("You" if affectingSelf else f"<@{target.id}>") + " will now be notified regarding server outage")
 
 	@commands.command()
-	async def dontNotifyIfDown(self, ctx, target: Union[discord.User, discord.Member] = None):
+	async def dontNotify(self, ctx, target: Union[discord.User, discord.Member] = None):
 		'''
-		Tells the bot to stop notifying you or a person of your choice when the server is down.
+		Tells the bot to stop notifying you or a person of your choice regarding server outage (loss of server connection, and reconnection to a dropped server).  
 		Passing a person without you having manage server perms is not allowed (unless that person is yourself).
 		'''
 		affectingSelf = target is None
@@ -501,7 +501,7 @@ class UserCommands(commands.Cog):
 		if target.id not in JSON[str(ctx.channel.id)]["toNotify"]: await ctx.message.reply("Already configured to not notify " + ("you" if affectingSelf else f"<@{target.id}>"))
 		else:
 			JSON[str(ctx.channel.id)]["toNotify"].remove(target.id)
-			await ctx.message.reply(("You" if affectingSelf else f"<@{target.id}>") + " will no longer be notified if the server is down")
+			await ctx.message.reply(("You" if affectingSelf else f"<@{target.id}>") + " will no longer be notified regarding server outage")
 
 	@commands.command()
 	async def peopleToNotify(self, ctx):

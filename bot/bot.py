@@ -91,56 +91,60 @@ class ServerCommands(commands.Cog):
 		# pylint: disable=no-member
 		self.pingServer.start() # PyLint sees this as an error, even though it's not
 		self.getFromRelay.start()
-	
+
 	@commands.command()
 	@commands.has_permissions(manage_guild=True)
 	async def connect(self, ctx, connectionString: str):
 		'''Adds a connection to a source server to this channel'''
-
-		if ctx.channel.id in JSON.keys():
-			connection = (JSON[str(ctx.channel.id)]["server"]._ip, JSON[str(ctx.channel.id)]["server"]._port)
+		channelID = str(ctx.channel.id)
+		if channelID in JSON.keys():
+			connection = (JSON[channelID]["server"]._ip, JSON[channelID]["server"]._port)
 			await ctx.message.reply("This channel is already connected to %s:%d, use `!removeConnection` to remove it" % connection)
 			return
-		
+
 		try: JSON.update({
-			str(ctx.channel.id): {"server": SourceServer(connectionString), "toNotify": [], "time_since_down": -1}
+			channelID: {"server": SourceServer(connectionString), "toNotify": [], "time_since_down": -1}
 		})
 		except SourceError as e: await ctx.message.reply("Error, " + e.message.split(" | ")[1])
 		except ValueError: await ctx.message.reply("Connection string invalid")
 		else:
-			if JSON[str(ctx.channel.id)]["server"].isClosed: await ctx.message.reply("Failed to connect to server")
+			if JSON[channelID]["server"].isClosed: await ctx.message.reply("Failed to connect to server")
 			else: await ctx.message.reply("Successfully connected to server!")
-	
+
 	@commands.command()
 	@commands.has_permissions(manage_guild=True)
 	async def disconnect(self, ctx):
 		'''Removes this channel's connection to a source server'''
+		channelID = str(ctx.channel.id)
+		if channelID not in JSON.keys(): await ctx.message.reply("This channel isn't connected to a server"); return
 
-		if str(ctx.channel.id) not in JSON.keys(): await ctx.message.reply("This channel isn't connected to a server"); return
-
-		del JSON[str(ctx.channel.id)]
+		del JSON[channelID]
 		await ctx.message.reply("Connection removed successfully!")
-	
+
 	@commands.command()
 	@commands.has_permissions(manage_guild=True)
 	async def close(self, ctx):
 		'''Closes the connection to the server'''
-		if JSON[str(ctx.channel.id)]["server"].isClosed: await ctx.message.reply("Server is already closed"); return
+		channelID = str(ctx.channel.id)
+		if channelID not in JSON.keys(): return
+		if JSON[channelID]["server"].isClosed: await ctx.message.reply("Server is already closed"); return
 
-		JSON[str(ctx.channel.id)]["server"].close()
+		JSON[channelID]["server"].close()
 		await ctx.message.reply("Server closed successfully!\nReconnect with `!retry`")
 	
 	@commands.command()
 	@commands.has_permissions(manage_guild=True)
 	async def retry(self, ctx):
 		'''Attempts to reconnect to the server'''
-		if not JSON[str(ctx.channel.id)]["server"].isClosed: await ctx.message.reply("Server is already connected"); return
-		serverCon = JSON[str(ctx.channel.id)]
+		channelID = str(ctx.channel.id)
+		if channelID not in JSON.keys(): return
+		if not JSON[channelID]["server"].isClosed: await ctx.message.reply("Server is already connected"); return
+		serverCon = JSON[channelID]
 
 		serverCon["server"].retry()
 		if serverCon["server"].isClosed: await ctx.message.reply("Failed to reconnect to server")
 		else:
-			JSON[str(ctx.channel.id)]["time_since_down"] = -1
+			JSON[channelID]["time_since_down"] = -1
 			await ctx.message.reply("Successfully reconnected to server!")
 
 			# Create a list of all valid user IDs
@@ -158,8 +162,8 @@ class ServerCommands(commands.Cog):
 				The Source Dedicated Server `{serverCon["server"]._info["name"] if serverCon["server"]._info != {} else "unknown"}` @ `{serverCon["server"]._ip}:{serverCon["server"]._port}` assigned to this bot just came back up!\n*You are receiving this message as you are set to be notified if the server goes down at `{ctx.guild.name}`*
 				''')
 
-			JSON[str(ctx.channel.id)]["toNotify"] = validIDs
-			autoclosed.remove(str(ctx.channel.id))
+			JSON[channelID]["toNotify"] = validIDs
+			autoclosed.remove(channelID)
 			
 	@commands.command()
 	@commands.has_permissions(manage_guild=True)

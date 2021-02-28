@@ -446,6 +446,10 @@ class UserCommands(commands.Cog):
 		Lists all people set to be notified, highlighting the person who runs the command
 		'''
 
+		if len(JSON[str(ctx.channel.id)]["toNotify"]) == 0: # If no one is set to be notified don't bother building a message
+			await ctx.message.reply("No one is set to be notified if down\n*use `!notifyIfDown` to mark yourself to be notified, and `!dontNotifyIfDown` to disable notifications*")
+			return
+
 		# As with the actual ping task, we save a list of valid IDs and replace the existing list with this one after the loop
 		validIDs = []
 

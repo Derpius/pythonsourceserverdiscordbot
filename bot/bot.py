@@ -318,18 +318,14 @@ class UserCommands(commands.Cog):
 			return
 		
 		if infoName in ("mode", "witnesses", "duration") and info["game"] != "The Ship":
-			await ctx.message.reply("%s is only valid on servers running The Ship" % infoName)
+			await ctx.message.reply(f"`{infoName}` is only valid on servers running The Ship")
 			return
 		
 		if infoName not in info.keys():
-			embed = discord.Embed(
-				title="'%s' is invalid" % infoName,
-				description="See [the wiki](https://github.com/100PXSquared/pythonsourceserver/wiki/SourceServer#the-info-property-values \"Python Source Server Query Library Wiki\")",
-				colour=COLOUR
-			)
-			await ctx.message.reply(embed=embed); return
+			await ctx.message.reply(f"'{infoName}' is invalid, see https://github.com/100PXSquared/pythonsourceserver/wiki/SourceServer#the-info-property-values for a list of valid properties")
+			return
 		
-		await ctx.message.reply("%s is " % infoName + str(info[infoName]))
+		await ctx.message.reply(f"`{infoName}` is `{info[infoName]}`")
 	
 	@commands.command()
 	async def players(self, ctx):

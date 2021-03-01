@@ -1,4 +1,4 @@
-local connection = "192.168.0.97:8080"
+local connection = "192.168.1.165:8080"
 local verbose = false
 local toggle = false
 
@@ -27,6 +27,19 @@ function onChat(plr, msg, teamCht)
 	end)
 end
 
+function httpCallbackError(reason)
+	if verbose then print("GET failed with reason: "..reason) end
+
+	if toggle then
+		HTTP({
+			failed = httpCallbackError,
+			success = httpCallback,
+			method = "GET",
+			url = "http://" .. connection
+		})
+	end
+end
+
 function httpCallback(statusCode, content, headers)
 	if statusCode != 200 then
 		if verbose then print("GET failed with status code " .. tostring(statusCode)) end
@@ -49,7 +62,7 @@ function httpCallback(statusCode, content, headers)
 
 	if toggle then
 		HTTP({
-			failed = function() httpCallback(500, "none") end,
+			failed = httpCallbackError,
 			success = httpCallback,
 			method = "GET",
 			url = "http://" .. connection

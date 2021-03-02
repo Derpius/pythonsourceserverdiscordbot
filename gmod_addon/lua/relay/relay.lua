@@ -1,4 +1,4 @@
-local connection = "192.168.1.165:8080"
+local connection = "localhost:8080"
 local verbose = false
 local toggle = false
 
@@ -32,7 +32,7 @@ function httpCallbackError(reason)
 
 	if toggle then
 		HTTP({
-			failed = httpCallbackError,
+			failed = function(reason) timer.Simple(0, function() httpCallbackError(reason) end) end,
 			success = httpCallback,
 			method = "GET",
 			url = "http://" .. connection
@@ -62,7 +62,7 @@ function httpCallback(statusCode, content, headers)
 
 	if toggle then
 		HTTP({
-			failed = httpCallbackError,
+			failed = function(reason) timer.Simple(0, function() httpCallbackError(reason) end) end,
 			success = httpCallback,
 			method = "GET",
 			url = "http://" .. connection
@@ -97,7 +97,7 @@ concommand.Add("startRelay", function(plr, cmd, args, argStr)
 		hook.Add("PlayerDeath", "hookTest", function(vic, inf, atk) print(vic:Name(), inf.Name and inf:Name() or inf:GetClass(), atk.Name and atk:Name() or atk:GetClass()) end)
 
 		HTTP({
-			failed = function() httpCallback(500, "none") end,
+			failed = function(reason) timer.Simple(0, function() httpCallbackError(reason) end) end,
 			success = httpCallback,
 			method = "GET",
 			url = "http://" .. connection

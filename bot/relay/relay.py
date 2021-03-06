@@ -16,7 +16,7 @@ custom = []
 def relayThread(port):
 	def onExit(filepath: str):
 		print("Relay thread shutdown")
-		try: server.socket.close()
+		try: server.shutdown()
 		except: print("Error closing server")
 
 	atexit.register(onExit, __file__)

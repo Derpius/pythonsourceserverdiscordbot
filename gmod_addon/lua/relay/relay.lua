@@ -80,8 +80,8 @@ concommand.Add("startRelay", function(plr, cmd, args, argStr)
 		toggle = true
 
 		hook.Add("PlayerSay", "GModRelay.CacheChat", onChat)
-		hook.Add("PlayerInitialSpawn", "GModRelay.CacheJoins", function(plr) cachePost({"join", plr:Nick()}) end)
-		hook.Add("PlayerDisconnected", "GModRelay.CacheLeaves", function(plr) cachePost({"leave", plr:Nick()}) end)
+		hook.Add("PlayerInitialSpawn", "GModRelay.CacheJoins", function(plr) cachePost({type="join", name=plr:Nick()}) end)
+		hook.Add("PlayerDisconnected", "GModRelay.CacheLeaves", function(plr) cachePost({type="leave", name=plr:Nick()}) end)
 		hook.Add("PlayerDeath", "GModRelay.CacheDeaths", function(vic, inf, atk)
 			cachePost({
 				type="death",

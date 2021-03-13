@@ -5,6 +5,8 @@ import atexit
 import json
 from time import sleep
 from urllib.parse import parse_qs
+import requests
+import re
 
 discordMsgs = []
 sourceMsgs = []
@@ -12,6 +14,8 @@ joins = []
 leaves = []
 deaths = []
 custom = []
+
+avatarPattern = re.compile(r"<avatarIcon><!\[CDATA\[(.*?)\]\]></avatarIcon>")
 
 def relayThread(port):
 	def onExit(filepath: str):
@@ -58,41 +62,44 @@ class Handler(BaseHTTPRequestHandler):
 	def do_POST(self):
 		'''The "receiver" for source server chat'''
 
-		if self.headers["Content-type"] != "application/x-www-form-urlencoded":
-			print("Request MIME type was not valid, was %s instead" % self.headers["Content-type"])
-			self.send_error(400, "Bad Request", "Request MIME type was not valid, was %s instead" % self.headers["Content-type"])
-			self.end_headers()
-			return
-		
-		request = parse_qs(self.rfile.read(int(self.headers['Content-Length'])).decode("utf-8"))
-
-		if "type" not in request.keys():
-			print("Request type param was not present")
-			self.send_error(400, "Bad Request", "Request type param was not present")
+		if self.headers["Content-type"] != "application/json":
+			print(f"Request MIME type of {self.headers['Content-type']} is invalid")
+			self.send_error(400, "Bad Request", f"Request MIME type of {self.headers['Content-type']} is invalid")
 			self.end_headers()
 			return
 
-		if request["type"][0] == "message":
-			global sourceMsgs
-			sourceMsgs.append(request)
-		elif request["type"][0] == "join":
-			global joins
-			joins.append(request["name"][0])
-		elif request["type"][0] == "leave":
-			global leaves
-			leaves.append(request["name"][0])
-		elif request["type"][0] == "death":
-			global deaths
-			deaths.append((request["victim"][0], request["inflictor"][0], request["attacker"][0], request["suicide"][0] == "1", request["noweapon"][0] == "1"))
-		elif request["type"][0] == "custom":
-			global custom
-			custom.append(request["body"][0])
-		else:
-			print("Request type param was not valid, got %s" % request["type"][0])
-			self.send_error(400, "Bad Request", "Request type param was not valid")
-			self.end_headers()
-			return
-		
+		data = json.loads(self.rfile.read(int(self.headers.get("Content-Length"))))
+		for k in sorted(data):
+			if "type" not in data[k].keys():
+				print("Request type param was not present")
+				self.send_error(400, "Bad Request", "Request type param was not present")
+				self.end_headers()
+				return
+
+			if data[k]["type"] == "message":
+				match = avatarPattern.search(requests.get(f"http://steamcommunity.com/profiles/{data[k]['steamID']}?xml=1").text).group(1)
+				data[k]["icon"] = "http://example.com/" if match is None else match
+
+				global sourceMsgs
+				sourceMsgs.append(data[k])
+			elif data[k]["type"] == "join":
+				global joins
+				joins.append(data[k]["name"])
+			elif data[k]["type"] == "leave":
+				global leaves
+				leaves.append(data[k]["name"])
+			elif data[k]["type"] == "death":
+				global deaths
+				deaths.append((data[k]["victim"], data[k]["inflictor"], data[k]["attacker"], data[k]["suicide"] == "1", data[k]["noweapon"] == "1"))
+			elif data[k]["type"] == "custom":
+				global custom
+				custom.append(data[k]["body"])
+			else:
+				print("Request type param was not valid, got %s" % data[k]["type"])
+				self.send_error(400, "Bad Request", "Request type param was not valid")
+				self.end_headers()
+				return
+
 		self.send_response(200)
 		self.end_headers()
 		return
@@ -136,5 +143,6 @@ class Relay(object):
 
 if __name__ == "__main__":
 	r = Relay(8080)
-
-	sleep(500)
+	try:
+		while True: sleep(10)
+	except KeyboardInterrupt: pass

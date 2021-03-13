@@ -272,7 +272,7 @@ class ServerCommands(commands.Cog):
 
 		msgs = tuple(r.getMessages())[0]
 		for msg in msgs:
-			author = [msg["steamID"][0], time.time()]
+			author = [msg["steamID"], time.time()]
 
 			lastMsg = (await self.bot.get_channel(relayChannel).history(limit=1).flatten())[0]
 			if (
@@ -282,15 +282,15 @@ class ServerCommands(commands.Cog):
 				lastMsg.embeds[0].footer.text != author[0] or
 				author[1] - lastAuthor[1] > 420
 			):
-				embed = discord.Embed(description=msg["message"][0], colour=discord.Colour.from_rgb(*[int(val) for val in msg["teamColour"][0].split(",")]))
+				embed = discord.Embed(description=msg["message"], colour=discord.Colour.from_rgb(*[int(val) for val in msg["teamColour"].split(",")]))
 				embed.set_footer(text=author[0])
-				embed.set_author(name="[%s] %s" % (msg["teamName"][0], msg["name"][0]), icon_url=msg["icon"][0])
+				embed.set_author(name="[%s] %s" % (msg["teamName"], msg["name"]), icon_url=msg["icon"])
 				await self.bot.get_channel(relayChannel).send(embed=embed)
 				lastAuthor = author
 			else:
-				embed = discord.Embed(description=lastMsg.embeds[0].description + "\n" + msg["message"][0], colour=discord.Colour.from_rgb(*[int(val) for val in msg["teamColour"][0].split(",")]))
+				embed = discord.Embed(description=lastMsg.embeds[0].description + "\n" + msg["message"], colour=discord.Colour.from_rgb(*[int(val) for val in msg["teamColour"].split(",")]))
 				embed.set_footer(text=author[0])
-				embed.set_author(name="[%s] %s" % (msg["teamName"][0], msg["name"][0]), icon_url=msg["icon"][0])
+				embed.set_author(name="[%s] %s" % (msg["teamName"], msg["name"]), icon_url=msg["icon"])
 				await lastMsg.edit(embed=embed)
 
 		# Handle custom events

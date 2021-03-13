@@ -1,4 +1,4 @@
-net.Receive("relayDiscordMessageReceived", function(len)
+net.Receive("GModRelay.NetworkMsg", function(len)
 	local username = net.ReadString()
 	local message = net.ReadString()
 	local colour = net.ReadColor()

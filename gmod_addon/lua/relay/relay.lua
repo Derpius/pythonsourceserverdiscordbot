@@ -2,29 +2,34 @@ local connection = "localhost:8080"
 local verbose = false
 local toggle = false
 
-function onJoinOrLeave(plrNick, reqType)
-	http.Post("http://" .. connection, {type=reqType, name=plrNick}, function(result)
-		if verbose and result then print("Join/Leave event POSTed to bot") end
-	end, function(reason)
-		if verbose then print("Join/Leave POST failed: "..reason) end
-	end)
+local postInterval = 0.1 -- how often to check for messages to post (seconds)
+local toPost = {}
+
+function cachePost(body)
+	local nonce = 1
+	local key = tostring(math.floor(RealTime()))..string.char(nonce)
+
+	while toPost[key] do
+		string.SetChar(key, #key, string.char(nonce))
+		nonce = nonce + 1
+		if nonce > 255 then
+			nonce = 1
+			print("More than 255 messages in a single second, preventing caching more to avoid issues")
+			return
+		end
+	end
+
+	toPost[key] = body
 end
 
 function onChat(plr, msg, teamCht)
-	http.Fetch("http://steamcommunity.com/profiles/" .. plr:SteamID64() .. "?xml=1", function(content, size)
-		local avatar = content:match("<avatarIcon><!%[CDATA%[(.-)%]%]></avatarIcon>") or ""
-		local teamColour = team.GetColor(plr:Team())
-		http.Post("http://" .. connection, {
-			type="message",
-			name=plr:Nick(), message=msg, icon=avatar,
-			teamName=team.GetName(plr:Team()), teamColour=tostring(teamColour.r)..","..tostring(teamColour.g)..","..tostring(teamColour.b),
-			steamID = plr:SteamID()
-		}, function(result)
-			if verbose and result then print("Message POSTed to bot") end
-		end, function(reason)
-			if verbose then print("Message POST failed: "..reason) end
-		end)
-	end)
+	local teamColour = team.GetColor(plr:Team())
+	cachePost({
+		type="message",
+		name=plr:Nick(), message=msg,
+		teamName=team.GetName(plr:Team()), teamColour=tostring(teamColour.r)..","..tostring(teamColour.g)..","..tostring(teamColour.b),
+		steamID = plr:SteamID64()
+	})
 end
 
 function httpCallbackError(reason)
@@ -50,7 +55,7 @@ function httpCallback(statusCode, content, headers)
 			print("[Discord | "..msg[4].."] " .. msg[1] .. ": " .. msg[2])
 			local colour = Color(msg[3][1], msg[3][2], msg[3][3])
 
-			net.Start("relayDiscordMessageReceived")
+			net.Start("GModRelay.NetworkMsg")
 				net.WriteString(msg[1])
 				net.WriteString(msg[2])
 				net.WriteColor(colour)
@@ -73,53 +78,62 @@ end
 concommand.Add("startRelay", function(plr, cmd, args, argStr)
 	if not plr:IsPlayer() and not toggle then
 		toggle = true
-		http.Post("http://" .. connection, {type="custom", body="Relay client connected!"}, function(result)
-			if verbose and result then print("Connection message POSTed to bot") end
-		end, function(reason)
-			if verbose then print("Connection message POST failed: "..reason) end
-		end)
 
-		hook.Add("PlayerSay", "relayMessagesToDiscordBot", onChat)
-		hook.Add("PlayerInitialSpawn", "relayJoinsToDiscordBot", function(plr) onJoinOrLeave(plr:Nick(), "join") end)
-		hook.Add("PlayerDisconnected", "relayLeavesToDiscordBot", function(plr) onJoinOrLeave(plr:Nick(), "leave") end)
-		hook.Add("PlayerDeath", "relayDeathsToDiscordBot", function(vic, inf, atk)
-			http.Post("http://" .. connection, {
+		hook.Add("PlayerSay", "GModRelay.CacheChat", onChat)
+		hook.Add("PlayerInitialSpawn", "GModRelay.CacheJoins", function(plr) cachePost({"join", plr:Nick()}) end)
+		hook.Add("PlayerDisconnected", "GModRelay.CacheLeaves", function(plr) cachePost({"leave", plr:Nick()}) end)
+		hook.Add("PlayerDeath", "GModRelay.CacheDeaths", function(vic, inf, atk)
+			cachePost({
 				type="death",
 				victim=vic:Name(), inflictor=inf.Name and inf:Name() or inf:GetClass(), attacker=atk.Name and atk:Name() or atk:GetClass(),
 				suicide=vic == atk and "1" or "0", noweapon=inf:GetClass() == atk:GetClass() and "1" or "0"
-			}, function(result)
-				if verbose and result then print("Death POSTed to bot") end
-			end, function(reason)
-				if verbose then print("Death POST failed: "..reason) end
-			end)
+			})
 		end)
-
-		hook.Add("PlayerDeath", "hookTest", function(vic, inf, atk) print(vic:Name(), inf.Name and inf:Name() or inf:GetClass(), atk.Name and atk:Name() or atk:GetClass()) end)
 
 		HTTP({
 			failed = function(reason) timer.Simple(0, function() httpCallbackError(reason) end) end,
 			success = httpCallback,
 			method = "GET",
-			url = "http://" .. connection
+			url = "http://"..connection
 		})
 
+		timer.Create("GModRelay.Post", postInterval, 0, function()
+			if #table.GetKeys(toPost) == 0 then return end
+
+			HTTP({
+				method = "POST",
+				url = "http://"..connection,
+				body = util.TableToJSON(toPost),
+				type = "application/json"
+			})
+			toPost = {}
+		end)
+
 		print("Relay started")
+		cachePost({type="custom", body="Relay client connected!"})
 	end
 end)
 concommand.Add("stopRelay", function(plr, cmd, args, argStr)
 	if not plr:IsPlayer() and toggle then
 		toggle = false
-		http.Post("http://" .. connection, {type="custom", body="Relay client disconnected"}, function(result)
-			if verbose and result then print("Disconnect message POSTed to bot") end
-		end, function(reason)
-			if verbose then print("Disconnect message POST failed: "..reason) end
-		end)
 
-		hook.Remove("PlayerSay", "relayMessagesToDiscordBot")
-		hook.Remove("PlayerInitialSpawn", "relayJoinsToDiscordBot")
-		hook.Remove("PlayerDisconnected", "relayLeavesToDiscordBot")
-		hook.Remove("PlayerDeath", "relayDeathsToDiscordBot")
+		hook.Remove("PlayerSay", "GModRelay.CacheChat")
+		hook.Remove("PlayerInitialSpawn", "GModRelay.CacheJoins")
+		hook.Remove("PlayerDisconnected", "GModRelay.CacheLeaves")
+		hook.Remove("PlayerDeath", "GModRelay.CacheDeaths")
+
+		timer.Remove("GModRelay.Post")
 
 		print("Relay stopped")
+		cachePost({type="custom", body="Relay client disconnected"})
+
+		-- POST any remaining messages including the disconnect one
+		HTTP({
+			method = "POST",
+			url = "http://"..connection,
+			body = util.TableToJSON(toPost),
+			type = "application/json"
+		})
+		toPost = {}
 	end
 end)

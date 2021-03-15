@@ -321,10 +321,10 @@ class ServerCommands(commands.Cog):
 
 	@commands.Cog.listener()
 	async def on_message(self, msg: discord.Message):
-		if msg.channel.id != relayChannel or msg.author.bot: return
+		if msg.channel.id != relayChannel or msg.author.bot or len(msg.content) < len(self.bot.command_prefix): return
 
-		if msg.content[0] == self.bot.command_prefix: # If the message is using the command prefix, check if it's a valid command
-			cmdText = msg.content[1:].split()[0]
+		if msg.content[:len(self.bot.command_prefix)] == self.bot.command_prefix: # If the message is using the command prefix, check if it's a valid command
+			cmdText = msg.content[len(self.bot.command_prefix):].split()[0]
 			for cmd in self.bot.commands:
 				if cmd.name == cmdText: return # Don't relay the message if it's a valid bot command
 

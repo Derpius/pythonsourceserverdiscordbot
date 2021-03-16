@@ -64,7 +64,7 @@ class Handler(BaseHTTPRequestHandler):
 
 		if self.headers["Content-type"] != "application/json":
 			print(f"Request MIME type of {self.headers['Content-type']} is invalid")
-			self.send_error(400, "Bad Request", f"Request MIME type of {self.headers['Content-type']} is invalid")
+			self.send_error(400, explain=f"Request MIME type of {self.headers['Content-type']} is invalid")
 			self.end_headers()
 			return
 
@@ -72,7 +72,7 @@ class Handler(BaseHTTPRequestHandler):
 		for k in sorted(data):
 			if "type" not in data[k].keys():
 				print("Request type param was not present")
-				self.send_error(400, "Bad Request", "Request type param was not present")
+				self.send_error(400, explain="Request type param was not present")
 				self.end_headers()
 				return
 
@@ -96,7 +96,7 @@ class Handler(BaseHTTPRequestHandler):
 				custom.append(data[k]["body"])
 			else:
 				print("Request type param was not valid, got %s" % data[k]["type"])
-				self.send_error(400, "Bad Request", "Request type param was not valid")
+				self.send_error(400, explain="Request type param was not valid")
 				self.end_headers()
 				return
 

@@ -71,13 +71,12 @@ def formatTimedelta(delta: timedelta) -> str:
 	minutes = (seconds % 3600) // 60
 	seconds = seconds % 60
 
-	datetimeStr = ""
-	if days != 0: datetimeStr += "%d days " % days
-	if hours != 0: datetimeStr += "%dhrs " % hours
-	if minutes != 0: datetimeStr += "%dmin " % minutes
-	if seconds != 0: datetimeStr += "%dsec" % seconds
-
-	return datetimeStr
+	datetimeStr = []
+	if days != 0: datetimeStr.append(f"{days} day{'s' if days != 1 else ''}")
+	if hours != 0: datetimeStr.append(f"{hours} hour{'s' if hours != 1 else ''}")
+	if minutes != 0: datetimeStr.append(f"{minutes} minute{'s' if minutes != 1 else ''}")
+	if seconds != 0: datetimeStr.append(f"{seconds} second{'s' if seconds != 1 else ''}")
+	return " ".join(datetimeStr)
 
 # List for logging if a server was closed automatically or not
 autoclosed = set()

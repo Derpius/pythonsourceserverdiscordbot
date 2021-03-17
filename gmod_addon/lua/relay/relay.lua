@@ -1,13 +1,12 @@
-local connection = "localhost:8080"
-local verbose = false
+local sv_hibernate_think = GetConVar("sv_hibernate_think")
+local relay_connection, relay_postinterval = GetConVar("relay_connection"), GetConVar("relay_postinterval")
+
 local toggle = false
 
-local postInterval = 16 -- how often to check for messages to post (ticks)
 local toPost = {}
-
 local tickTimer = 0
 
-local sv_hibernate_think = GetConVar("sv_hibernate_think")
+
 
 local function cachePost(body)
 	local nonce = 1
@@ -43,7 +42,7 @@ local function httpCallbackError(reason)
 			failed = function(reason) timer.Simple(0, function() httpCallbackError(reason) end) end,
 			success = httpCallback,
 			method = "GET",
-			url = "http://" .. connection
+			url = "http://"..relay_connection:GetString()
 		})
 	end
 end
@@ -73,7 +72,7 @@ local function httpCallback(statusCode, content, headers)
 			failed = function(reason) timer.Simple(0, function() httpCallbackError(reason) end) end,
 			success = httpCallback,
 			method = "GET",
-			url = "http://" .. connection
+			url = "http://"..relay_connection:GetString()
 		})
 	end
 end
@@ -91,7 +90,7 @@ concommand.Add("startRelay", function(plr, cmd, args, argStr)
 			if not sv_hibernate_think:GetBool() and player.GetCount() == 1 then
 				HTTP({
 					method = "POST",
-					url = "http://"..connection,
+					url = "http://"..relay_connection:GetString(),
 					body = util.TableToJSON(toPost),
 					type = "application/json"
 				})
@@ -110,16 +109,16 @@ concommand.Add("startRelay", function(plr, cmd, args, argStr)
 			failed = function(reason) timer.Simple(0, function() httpCallbackError(reason) end) end,
 			success = httpCallback,
 			method = "GET",
-			url = "http://"..connection
+			url = "http://"..relay_connection:GetString()
 		})
 
 		hook.Add("Tick", "DiscordRelay.Post", function()
-			tickTimer = (tickTimer + 1) % postInterval
+			tickTimer = (tickTimer + 1) % relay_postinterval:GetInt()
 			if tickTimer ~= 0 or #table.GetKeys(toPost) == 0 then return end
 
 			HTTP({
 				method = "POST",
-				url = "http://"..connection,
+				url = "http://"..relay_connection:GetString(),
 				body = util.TableToJSON(toPost),
 				type = "application/json"
 			})
@@ -129,7 +128,7 @@ concommand.Add("startRelay", function(plr, cmd, args, argStr)
 		print("Relay started")
 		HTTP({
 			method = "POST",
-			url = "http://"..connection,
+			url = "http://"..relay_connection:GetString(),
 			body = '{"0":{"type":"custom","body":"Relay client connected!"}}',
 			type = "application/json"
 		})
@@ -152,7 +151,7 @@ concommand.Add("stopRelay", function(plr, cmd, args, argStr)
 		-- POST any remaining messages including the disconnect one
 		HTTP({
 			method = "POST",
-			url = "http://"..connection,
+			url = "http://"..relay_connection:GetString(),
 			body = util.TableToJSON(toPost),
 			type = "application/json"
 		})
@@ -171,7 +170,7 @@ concommand.Add("dsay", function(plr, cmd, args, argStr)
 	if not sv_hibernate_think:GetBool() and player.GetCount() == 0 then
 		HTTP({
 			method = "POST",
-			url = "http://"..connection,
+			url = "http://"..relay_connection:GetString(),
 			body = util.TableToJSON(toPost),
 			type = "application/json"
 		})

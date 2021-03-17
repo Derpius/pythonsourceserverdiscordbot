@@ -5,6 +5,7 @@ if SERVER then
 
 	util.AddNetworkString("DiscordRelay.NetworkMsg")
 
+	include("params.lua")
 	include("relay/relay.lua")
 	AddCSLuaFile("relay/client.lua")
 end

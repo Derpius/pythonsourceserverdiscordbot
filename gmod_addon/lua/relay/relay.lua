@@ -163,7 +163,7 @@ concommand.Add("dsay", function(plr, cmd, args, argStr)
 	if plr:IsPlayer() then print("Only the server can use this command") end
 	if not toggle then print("Please start the relay with startRelay first"); return end
 
-	cachePost({type="custom", body=argStr})
+	cachePost({type="custom", body="[CONSOLE]: "..argStr})
 	RunConsoleCommand("say", argStr)
 
 	-- If the server is hibernating then manually POST

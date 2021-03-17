@@ -58,12 +58,12 @@ function httpCallback(statusCode, content, headers)
 			print("[Discord | "..msg[4].."] " .. msg[1] .. ": " .. msg[2])
 			local colour = Color(msg[3][1], msg[3][2], msg[3][3])
 
-			net.Start("GModRelay.NetworkMsg")
+			net.Start("DiscordRelay.NetworkMsg")
 				net.WriteString(msg[1])
 				net.WriteString(msg[2])
 				net.WriteColor(colour)
 				net.WriteString(msg[4])
-				hook.Run("GModRelay.DiscordMsg", msg[1], msg[2], colour, msg[4])
+				hook.Run("DiscordRelay.Message", msg[1], msg[2], colour, msg[4])
 			net.Broadcast()
 		end
 	end
@@ -82,9 +82,9 @@ concommand.Add("startRelay", function(plr, cmd, args, argStr)
 	if not plr:IsPlayer() and not toggle then
 		toggle = true
 
-		hook.Add("PlayerSay", "GModRelay.CacheChat", onChat)
-		hook.Add("PlayerInitialSpawn", "GModRelay.CacheJoins", function(plr) cachePost({type="join", name=plr:Nick()}) end)
-		hook.Add("PlayerDisconnected", "GModRelay.CacheLeaves", function(plr)
+		hook.Add("PlayerSay", "DiscordRelay.CacheChat", onChat)
+		hook.Add("PlayerInitialSpawn", "DiscordRelay.CacheJoins", function(plr) cachePost({type="join", name=plr:Nick()}) end)
+		hook.Add("PlayerDisconnected", "DiscordRelay.CacheLeaves", function(plr)
 			cachePost({type="leave", name=plr:Nick()})
 
 			-- Edge case: if this leave event caused the server to go into hibernation, manually post the cache now
@@ -98,7 +98,7 @@ concommand.Add("startRelay", function(plr, cmd, args, argStr)
 				toPost = {}
 			end
 		end)
-		hook.Add("PlayerDeath", "GModRelay.CacheDeaths", function(vic, inf, atk)
+		hook.Add("PlayerDeath", "DiscordRelay.CacheDeaths", function(vic, inf, atk)
 			cachePost({
 				type="death",
 				victim=vic:Name(), inflictor=inf.Name and inf:Name() or inf:GetClass(), attacker=atk.Name and atk:Name() or atk:GetClass(),
@@ -113,7 +113,7 @@ concommand.Add("startRelay", function(plr, cmd, args, argStr)
 			url = "http://"..connection
 		})
 
-		hook.Add("Tick", "GModRelay.Post", function()
+		hook.Add("Tick", "DiscordRelay.Post", function()
 			tickTimer = (tickTimer + 1) % postInterval
 			if tickTimer ~= 0 or #table.GetKeys(toPost) == 0 then return end
 
@@ -139,12 +139,12 @@ concommand.Add("stopRelay", function(plr, cmd, args, argStr)
 	if not plr:IsPlayer() and toggle then
 		toggle = false
 
-		hook.Remove("PlayerSay", "GModRelay.CacheChat")
-		hook.Remove("PlayerInitialSpawn", "GModRelay.CacheJoins")
-		hook.Remove("PlayerDisconnected", "GModRelay.CacheLeaves")
-		hook.Remove("PlayerDeath", "GModRelay.CacheDeaths")
+		hook.Remove("PlayerSay", "DiscordRelay.CacheChat")
+		hook.Remove("PlayerInitialSpawn", "DiscordRelay.CacheJoins")
+		hook.Remove("PlayerDisconnected", "DiscordRelay.CacheLeaves")
+		hook.Remove("PlayerDeath", "DiscordRelay.CacheDeaths")
 
-		hook.Remove("Tick", "GModRelay.Post")
+		hook.Remove("Tick", "DiscordRelay.Post")
 
 		print("Relay stopped")
 		cachePost({type="custom", body="Relay client disconnected"})

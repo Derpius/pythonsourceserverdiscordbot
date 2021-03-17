@@ -3,7 +3,7 @@ if SERVER then
 	print("| HTTP Chat Relay Server |")
 	print("##########################")
 
-	util.AddNetworkString("GModRelay.NetworkMsg")
+	util.AddNetworkString("DiscordRelay.NetworkMsg")
 
 	include("relay/relay.lua")
 	AddCSLuaFile("relay/client.lua")

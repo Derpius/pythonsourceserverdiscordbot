@@ -9,7 +9,11 @@ local tickTimer = 0
 
 local sv_hibernate_think = GetConVar("sv_hibernate_think")
 
-function cachePost(body)
+local function hibernating()
+	return not sv_hibernate_think:GetBool() and player.GetCount() == 1
+end
+
+local function cachePost(body)
 	local nonce = 1
 	local key = tostring(math.floor(CurTime()))..string.char(nonce)
 
@@ -25,7 +29,7 @@ function cachePost(body)
 	toPost[key] = body
 end
 
-function onChat(plr, msg, teamCht)
+local function onChat(plr, msg, teamCht)
 	local teamColour = team.GetColor(plr:Team())
 	cachePost({
 		type="message",
@@ -35,7 +39,7 @@ function onChat(plr, msg, teamCht)
 	})
 end
 
-function httpCallbackError(reason)
+local function httpCallbackError(reason)
 	if verbose then print("GET failed with reason: "..reason) end
 
 	if toggle then
@@ -48,7 +52,7 @@ function httpCallbackError(reason)
 	end
 end
 
-function httpCallback(statusCode, content, headers)
+local function httpCallback(statusCode, content, headers)
 	if statusCode != 200 then
 		if verbose then print("GET failed with status code " .. tostring(statusCode)) end
 	elseif content != "none" then
@@ -88,7 +92,7 @@ concommand.Add("startRelay", function(plr, cmd, args, argStr)
 			cachePost({type="leave", name=plr:Nick()})
 
 			-- Edge case: if this leave event caused the server to go into hibernation, manually post the cache now
-			if not sv_hibernate_think:GetBool() and player.GetCount() == 1 then
+			if hibernating() then
 				HTTP({
 					method = "POST",
 					url = "http://"..connection,
@@ -130,7 +134,7 @@ concommand.Add("startRelay", function(plr, cmd, args, argStr)
 		HTTP({
 			method = "POST",
 			url = "http://"..connection,
-			body = '{"type":"custom","body":"Relay client connected!"}',
+			body = '{"0":{"type":"custom","body":"Relay client connected!"}}',
 			type = "application/json"
 		})
 	end
@@ -159,3 +163,22 @@ concommand.Add("stopRelay", function(plr, cmd, args, argStr)
 		toPost = {}
 	end
 end)
+
+concommand.Add("dsay", function(plr, cmd, args, argStr)
+	if plr:IsPlayer() then print("Only the server can use this command") end
+	if not toggle then print("Please start the relay with startRelay first"); return end
+
+	cachePost({type="custom", body=argStr})
+	RunConsoleCommand("say", argStr)
+
+	-- If the server is hibernating then manually POST
+	if hibernating() then
+		HTTP({
+			method = "POST",
+			url = "http://"..connection,
+			body = util.TableToJSON(toPost),
+			type = "application/json"
+		})
+		toPost = {}
+	end
+end, nil, "Same as say except sends to Discord too")

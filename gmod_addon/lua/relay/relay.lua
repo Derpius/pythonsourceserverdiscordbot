@@ -1,12 +1,10 @@
 local sv_hibernate_think = GetConVar("sv_hibernate_think")
-local relay_connection, relay_postinterval = GetConVar("relay_connection"), GetConVar("relay_postinterval")
+local relay_connection, relay_interval = GetConVar("relay_connection"), GetConVar("relay_interval")
 
 local toggle = false
 
 local toPost = {}
 local tickTimer = 0
-
-
 
 local function cachePost(body)
 	local nonce = 1
@@ -32,49 +30,6 @@ local function onChat(plr, msg, teamCht)
 		teamName=team.GetName(plr:Team()), teamColour=tostring(teamColour.r)..","..tostring(teamColour.g)..","..tostring(teamColour.b),
 		steamID = plr:SteamID64()
 	})
-end
-
-local function httpCallbackError(reason)
-	print("GET failed with reason: "..reason)
-
-	if toggle then
-		HTTP({
-			failed = function(reason) timer.Simple(0, function() httpCallbackError(reason) end) end,
-			success = httpCallback,
-			method = "GET",
-			url = "http://"..relay_connection:GetString()
-		})
-	end
-end
-
-local function httpCallback(statusCode, content, headers)
-	if statusCode != 200 then
-		print("GET failed with status code "..tostring(statusCode))
-	elseif content != "none" then
-		JSON = util.JSONToTable(content)
-
-		for _, msg in pairs(JSON) do
-			print("[Discord | "..msg[4].."] " .. msg[1] .. ": " .. msg[2])
-			local colour = Color(msg[3][1], msg[3][2], msg[3][3])
-
-			net.Start("DiscordRelay.NetworkMsg")
-				net.WriteString(msg[1])
-				net.WriteString(msg[2])
-				net.WriteColor(colour)
-				net.WriteString(msg[4])
-				hook.Run("DiscordRelay.Message", msg[1], msg[2], colour, msg[4])
-			net.Broadcast()
-		end
-	end
-
-	if toggle then
-		HTTP({
-			failed = function(reason) timer.Simple(0, function() httpCallbackError(reason) end) end,
-			success = httpCallback,
-			method = "GET",
-			url = "http://"..relay_connection:GetString()
-		})
-	end
 end
 
 concommand.Add("startRelay", function(plr, cmd, args, argStr)
@@ -105,24 +60,41 @@ concommand.Add("startRelay", function(plr, cmd, args, argStr)
 			})
 		end)
 
-		HTTP({
-			failed = function(reason) timer.Simple(0, function() httpCallbackError(reason) end) end,
-			success = httpCallback,
-			method = "GET",
-			url = "http://"..relay_connection:GetString()
-		})
+		hook.Add("Tick", "DiscordRelay.DoHTTP", function()
+			tickTimer = (tickTimer + 1) % relay_interval:GetInt()
+			if tickTimer == 0 and #table.GetKeys(toPost) > 0 then
+				-- POST cached messages to relay server
+				HTTP({
+					method = "POST",
+					url = "http://"..relay_connection:GetString(),
+					body = util.TableToJSON(toPost),
+					type = "application/json"
+				})
+				toPost = {}
+			elseif tickTimer == math.floor(relay_interval:GetInt() / 2) then
+				-- GET any available messages from relay server
+				HTTP({
+					success = function(statusCode, content, headers)
+						if statusCode != 200 or content == "none" then return end
+						JSON = util.JSONToTable(content)
 
-		hook.Add("Tick", "DiscordRelay.Post", function()
-			tickTimer = (tickTimer + 1) % relay_postinterval:GetInt()
-			if tickTimer ~= 0 or #table.GetKeys(toPost) == 0 then return end
+						for _, msg in pairs(JSON) do
+							print("[Discord | "..msg[4].."] " .. msg[1] .. ": " .. msg[2])
+							local colour = Color(msg[3][1], msg[3][2], msg[3][3])
 
-			HTTP({
-				method = "POST",
-				url = "http://"..relay_connection:GetString(),
-				body = util.TableToJSON(toPost),
-				type = "application/json"
-			})
-			toPost = {}
+							net.Start("DiscordRelay.NetworkMsg")
+								net.WriteString(msg[1])
+								net.WriteString(msg[2])
+								net.WriteColor(colour)
+								net.WriteString(msg[4])
+								hook.Run("DiscordRelay.Message", msg[1], msg[2], colour, msg[4])
+							net.Broadcast()
+						end
+					end,
+					method = "GET",
+					url = "http://"..relay_connection:GetString()
+				})
+			end
 		end)
 
 		print("Relay started")
@@ -143,7 +115,7 @@ concommand.Add("stopRelay", function(plr, cmd, args, argStr)
 		hook.Remove("PlayerDisconnected", "DiscordRelay.CacheLeaves")
 		hook.Remove("PlayerDeath", "DiscordRelay.CacheDeaths")
 
-		hook.Remove("Tick", "DiscordRelay.Post")
+		hook.Remove("Tick", "DiscordRelay.DoHTTP")
 
 		print("Relay stopped")
 		cachePost({type="custom", body="Relay client disconnected"})
@@ -164,7 +136,11 @@ concommand.Add("dsay", function(plr, cmd, args, argStr)
 	if not toggle then print("Please start the relay with startRelay first"); return end
 
 	cachePost({type="custom", body="[CONSOLE]: "..argStr})
-	RunConsoleCommand("say", argStr)
+
+	net.Start("DiscordRelay.DSay")
+	net.WriteString(argStr)
+	net.Broadcast()
+	print("Console: "..argStr)
 
 	-- If the server is hibernating then manually POST
 	if not sv_hibernate_think:GetBool() and player.GetCount() == 0 then

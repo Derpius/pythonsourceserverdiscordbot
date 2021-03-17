@@ -4,6 +4,7 @@ if SERVER then
 	print("##########################")
 
 	util.AddNetworkString("DiscordRelay.NetworkMsg")
+	util.AddNetworkString("DiscordRelay.DSay")
 
 	include("params.lua")
 	include("relay/relay.lua")

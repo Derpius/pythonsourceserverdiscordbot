@@ -38,26 +38,16 @@ class ThreadedHTTPServer(ThreadingMixIn, HTTPServer):
 class Handler(BaseHTTPRequestHandler):
 	def do_GET(self):
 		'''The "transmitter" for discord chat'''
-
 		self.send_response(200)
 		self.send_header("Content-type", "application/json")
 		self.end_headers()
 
 		global discordMsgs
-
-		# Wait for discord messages for 1 minute. If 1 minute elapsed, send "none" so the other end can resend the request to avoid timeout
-		timeSlept = 0
-		while len(discordMsgs) == 0:
-			sleep(0.1)
-			timeSlept += 0.1
-
-			if timeSlept >= 60:
-				self.wfile.write(b"none")
-				return
-		
-		self.wfile.write(bytes(json.dumps(discordMsgs), encoding="utf-8"))
+		if len(discordMsgs) == 0:
+			self.wfile.write(b"none")
+			return
+		self.wfile.write(bytes(json.dumps(discordMsgs), encoding="utf-8"))	
 		discordMsgs = []
-		return
 	
 	def do_POST(self):
 		'''The "receiver" for source server chat'''

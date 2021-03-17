@@ -9,10 +9,6 @@ local tickTimer = 0
 
 local sv_hibernate_think = GetConVar("sv_hibernate_think")
 
-local function hibernating()
-	return not sv_hibernate_think:GetBool() and player.GetCount() == 1
-end
-
 local function cachePost(body)
 	local nonce = 1
 	local key = tostring(math.floor(CurTime()))..string.char(nonce)
@@ -92,7 +88,7 @@ concommand.Add("startRelay", function(plr, cmd, args, argStr)
 			cachePost({type="leave", name=plr:Nick()})
 
 			-- Edge case: if this leave event caused the server to go into hibernation, manually post the cache now
-			if hibernating() then
+			if not sv_hibernate_think:GetBool() and player.GetCount() == 1 then
 				HTTP({
 					method = "POST",
 					url = "http://"..connection,
@@ -172,7 +168,7 @@ concommand.Add("dsay", function(plr, cmd, args, argStr)
 	RunConsoleCommand("say", argStr)
 
 	-- If the server is hibernating then manually POST
-	if hibernating() then
+	if not sv_hibernate_think:GetBool() and player.GetCount() == 0 then
 		HTTP({
 			method = "POST",
 			url = "http://"..connection,

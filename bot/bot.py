@@ -321,16 +321,22 @@ class ServerCommands(commands.Cog):
 
 	@commands.Cog.listener()
 	async def on_message(self, msg: discord.Message):
-		if msg.channel.id != relayChannel or msg.author.bot or len(msg.content) < len(self.bot.command_prefix): return
+		if msg.channel.id != relayChannel or msg.author.bot: return
 
-		if msg.content[:len(self.bot.command_prefix)] == self.bot.command_prefix: # If the message is using the command prefix, check if it's a valid command
+		if ( # If the message is using the command prefix, check if it's a valid command
+			len(msg.content) > len(self.bot.command_prefix) and
+			msg.content[:len(self.bot.command_prefix)] == self.bot.command_prefix
+		):
 			cmdText = msg.content[len(self.bot.command_prefix):].split()[0]
 			for cmd in self.bot.commands:
 				if cmd.name == cmdText: return # Don't relay the message if it's a valid bot command
 
 		if msg.author.colour.value == 0: colour = (255, 255, 255)
 		else: colour = msg.author.colour.to_rgb()
-		r.addMessage([msg.author.display_name, msg.content, colour, msg.author.top_role.name])
+		if len(msg.content) != 0: r.addMessage((msg.author.display_name, msg.content, colour, msg.author.top_role.name))
+
+		for attachment in msg.attachments:
+			r.addMessage((msg.author.display_name, attachment.url, colour, msg.author.top_role.name))
 
 # User commands
 class UserCommands(commands.Cog):

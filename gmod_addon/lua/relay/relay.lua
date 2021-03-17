@@ -35,7 +35,7 @@ local function onChat(plr, msg, teamCht)
 end
 
 local function httpCallbackError(reason)
-	if verbose then print("GET failed with reason: "..reason) end
+	print("GET failed with reason: "..reason)
 
 	if toggle then
 		HTTP({
@@ -49,7 +49,7 @@ end
 
 local function httpCallback(statusCode, content, headers)
 	if statusCode != 200 then
-		if verbose then print("GET failed with status code " .. tostring(statusCode)) end
+		print("GET failed with status code "..tostring(statusCode))
 	elseif content != "none" then
 		JSON = util.JSONToTable(content)
 

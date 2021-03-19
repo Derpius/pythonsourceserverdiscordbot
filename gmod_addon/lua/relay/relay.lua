@@ -13,8 +13,8 @@ local function cachePost(body)
 	while toPost[key] do
 		key = string.SetChar(key, #key, string.char(nonce))
 		nonce = nonce + 1
-		if nonce > 255 then
-			print("More than 255 messages in a single second, preventing caching more to avoid issues")
+		if nonce > 5 then
+			print("More than 5 messages in a single second, preventing caching more to avoid Discord rate limiting")
 			return
 		end
 	end

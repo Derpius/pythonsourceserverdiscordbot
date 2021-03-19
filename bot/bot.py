@@ -93,7 +93,10 @@ class ServerCommands(commands.Cog):
 
 	async def cog_check(self, ctx):
 		'''Make sure the person using these commands has manage guild permissions'''
-		return ctx.author.guild_permissions.manage_guild
+		if not ctx.author.guild_permissions.manage_guild:
+			await ctx.message.reply(f"You don't have permission to run that command <@{ctx.message.author.id}>")
+			return False
+		return True
 
 	@commands.command()
 	async def connect(self, ctx, connectionString: str):
@@ -209,10 +212,9 @@ class ServerCommands(commands.Cog):
 		if isinstance(error, SourceError):
 			await ctx.message.reply(f"A server error occured, see the logs for details")
 			print(error.message)
-		elif isinstance(error, MissingPermissions):
-			await ctx.message.reply(f"You don't have permission to run that command <@{ctx.message.author.id}>")
 		elif isinstance(error, commands.errors.MissingRequiredArgument):
 			await ctx.message.reply("Command missing required argument, see `!help`")
+		elif isinstance(error, commands.errors.CheckFailure): pass
 		else: raise error
 
 	# Tasks
@@ -555,7 +557,7 @@ class UserCommands(commands.Cog):
 	async def cog_check(self, ctx):
 		if str(ctx.channel.id) not in JSON: return False
 
-		if JSON[str(ctx.channel.id)]["server"].isClosed:
+		if JSON[str(ctx.channel.id)]["server"].isClosed and ctx.command.name != "help":
 			await ctx.message.reply("Server is closed, please try again later")
 			return False
 

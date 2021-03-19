@@ -554,7 +554,7 @@ class UserCommands(commands.Cog):
 			await ctx.message.reply("Command missing required argument, see `!help`")
 		else: raise error
 
-bot = commands.Bot(PREFIX)
+bot = commands.Bot(PREFIX, case_insensitive=True)
 bot.add_cog(ServerCommands(bot))
 bot.add_cog(UserCommands(bot))
 bot.run(TOKEN)

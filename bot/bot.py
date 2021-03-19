@@ -91,8 +91,11 @@ class ServerCommands(commands.Cog):
 		self.pingServer.start() # PyLint sees this as an error, even though it's not
 		self.getFromRelay.start()
 
+	async def cog_check(self, ctx):
+		'''Make sure the person using these commands has manage guild permissions'''
+		return ctx.author.guild_permissions.manage_guild
+
 	@commands.command()
-	@commands.has_permissions(manage_guild=True)
 	async def connect(self, ctx, connectionString: str):
 		'''Adds a connection to a source server to this channel'''
 		channelID = str(ctx.channel.id)
@@ -115,7 +118,6 @@ class ServerCommands(commands.Cog):
 				await ctx.message.reply("Successfully connected to server!")
 
 	@commands.command()
-	@commands.has_permissions(manage_guild=True)
 	async def disconnect(self, ctx):
 		'''Removes this channel's connection to a source server'''
 		channelID = str(ctx.channel.id)
@@ -125,7 +127,6 @@ class ServerCommands(commands.Cog):
 		await ctx.message.reply("Connection removed successfully!")
 
 	@commands.command()
-	@commands.has_permissions(manage_guild=True)
 	async def close(self, ctx):
 		'''Closes the connection to the server'''
 		channelID = str(ctx.channel.id)
@@ -136,7 +137,6 @@ class ServerCommands(commands.Cog):
 		await ctx.message.reply("Server closed successfully!\nReconnect with `!retry`")
 
 	@commands.command()
-	@commands.has_permissions(manage_guild=True)
 	async def retry(self, ctx):
 		'''Attempts to reconnect to the server'''
 		channelID = str(ctx.channel.id)
@@ -170,7 +170,6 @@ class ServerCommands(commands.Cog):
 				autoclosed.remove(channelID)
 
 	@commands.command()
-	@commands.has_permissions(manage_guild=True)
 	async def relayHere(self, ctx):
 		'''Sets this channel as game chat relay destination'''
 		global relayChannel
@@ -179,7 +178,6 @@ class ServerCommands(commands.Cog):
 		await ctx.message.reply("Relay set successfully!")
 
 	@commands.command()
-	@commands.has_permissions(manage_guild=True)
 	async def disableRelay(self, ctx):
 		'''Disables relay (note, the relay thread will still run)'''
 		global relayChannel

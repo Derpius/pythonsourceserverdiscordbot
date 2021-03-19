@@ -78,7 +78,7 @@ concommand.Add("startRelay", function(plr, cmd, args, argStr)
 						if statusCode != 200 or content == "none" then return end
 						JSON = util.JSONToTable(content)
 
-						for _, msg in pairs(JSON) do
+						for _, msg in pairs(JSON.chat) do
 							print("[Discord | "..msg[4].."] " .. msg[1] .. ": " .. msg[2])
 							local colour = Color(msg[3][1], msg[3][2], msg[3][3])
 
@@ -89,6 +89,10 @@ concommand.Add("startRelay", function(plr, cmd, args, argStr)
 								net.WriteString(msg[4])
 								hook.Run("DiscordRelay.Message", msg[1], msg[2], colour, msg[4])
 							net.Broadcast()
+						end
+
+						for i = 1, #JSON.rcon do
+							game.ConsoleCommand(JSON.rcon[i].."\n")
 						end
 					end,
 					method = "GET",

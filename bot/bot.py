@@ -184,6 +184,25 @@ class ServerCommands(commands.Cog):
 		relayChannel = None
 
 		await ctx.message.reply("Relay disabled, use `!relayHere` to re-enable")
+	
+	@commands.command()
+	async def rcon(self, ctx):
+		'''
+		Runs a string in the relay client's console  
+		(may not be supported by all clients)
+		'''
+		if ctx.channel.id != relayChannel:
+			await ctx.message.reply("Relay is not enabled in this channel")
+			return
+		
+		sanetised = ctx.message.content[len(self.bot.command_prefix + "rcon "):].replace("\n", ";")
+
+		if len(sanetised) == 0:
+			await ctx.message.reply("No command string specified")
+			return
+
+		r.addRCON(sanetised)
+		await ctx.message.reply(f"Command `{sanetised}` queued")
 
 	# Cog error handler
 	async def cog_command_error(self, ctx, error):

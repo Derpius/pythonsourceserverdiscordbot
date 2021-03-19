@@ -8,7 +8,7 @@ from urllib.parse import parse_qs
 import requests
 import re
 
-discordMsgs = []
+discordMsgs = {"chat": [], "rcon": []}
 sourceMsgs = []
 joins = []
 leaves = []
@@ -43,11 +43,11 @@ class Handler(BaseHTTPRequestHandler):
 		self.end_headers()
 
 		global discordMsgs
-		if len(discordMsgs) == 0:
+		if len(discordMsgs["chat"]) == 0 and len(discordMsgs["rcon"]) == 0:
 			self.wfile.write(b"none")
 			return
 		self.wfile.write(bytes(json.dumps(discordMsgs), encoding="utf-8"))	
-		discordMsgs = []
+		discordMsgs = {"chat": [], "rcon": []}
 	
 	def do_POST(self):
 		'''The "receiver" for source server chat'''
@@ -105,7 +105,11 @@ class Relay(object):
 	
 	def addMessage(self, msg):
 		global discordMsgs
-		discordMsgs.append(msg)
+		discordMsgs["chat"].append(msg)
+	
+	def addRCON(self, command):
+		global discordMsgs
+		discordMsgs["rcon"].append(command)
 	
 	def getMessages(self):
 		global sourceMsgs

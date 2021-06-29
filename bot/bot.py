@@ -205,7 +205,7 @@ class ServerCommands(commands.Cog):
 			return
 
 		r.addRCON(sanetised)
-		await ctx.message.reply(f"Command `{sanetised}` queued")
+		await ctx.message.reply(f"Command `{sanetised if len(sanetised) < 256 else sanetised[:256] + '...'}` queued")
 
 	# Cog error handler
 	async def cog_command_error(self, ctx, error):

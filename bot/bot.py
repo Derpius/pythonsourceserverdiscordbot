@@ -107,7 +107,7 @@ class ServerCommands(commands.Cog):
 			if connectionString == existingConnection:
 				await ctx.message.reply("This channel is already connected to that server")
 				return
-			await ctx.message.reply(f"This channel is already connected to `{existingConnection}`, use `!disconnect` to connect to a different server")
+			await ctx.message.reply(f"This channel is already connected to `{existingConnection}`, use `{self.bot.command_prefix}disconnect` to connect to a different server")
 			return
 
 		server = None
@@ -137,7 +137,7 @@ class ServerCommands(commands.Cog):
 		if JSON[channelID]["server"].isClosed: await ctx.message.reply("Server is already closed"); return
 
 		JSON[channelID]["server"].close()
-		await ctx.message.reply("Server closed successfully!\nReconnect with `!retry`")
+		await ctx.message.reply(f"Server closed successfully!\nReconnect with `{self.bot.command_prefix}retry`")
 
 	@commands.command()
 	async def retry(self, ctx):
@@ -186,7 +186,7 @@ class ServerCommands(commands.Cog):
 		global relayChannel
 		relayChannel = None
 
-		await ctx.message.reply("Relay disabled, use `!relayHere` to re-enable")
+		await ctx.message.reply(f"Relay disabled, use `{self.bot.command_prefix}relayHere` to re-enable")
 	
 	@commands.command()
 	async def rcon(self, ctx):
@@ -213,7 +213,7 @@ class ServerCommands(commands.Cog):
 			await ctx.message.reply(f"A server error occured, see the logs for details")
 			print(error.message)
 		elif isinstance(error, commands.errors.MissingRequiredArgument):
-			await ctx.message.reply("Command missing required argument, see `!help`")
+			await ctx.message.reply(f"Command missing required argument, see `{self.bot.command_prefix}help`")
 		elif isinstance(error, commands.errors.CheckFailure): pass
 		else: raise error
 
@@ -532,7 +532,7 @@ class UserCommands(commands.Cog):
 		'''
 
 		if len(JSON[str(ctx.channel.id)]["toNotify"]) == 0: # If no one is set to be notified don't bother building a message
-			await ctx.message.reply("No one is set to be notified regarding server outage\n*use `!notify` to mark yourself to be notified, and `!dontNotify` to disable notifications*")
+			await ctx.message.reply(f"No one is set to be notified regarding server outage\n*use `{self.bot.command_prefix}notify` to mark yourself to be notified, and `{self.bot.command_prefix}dontNotify` to disable notifications*")
 			return
 
 		# As with the actual ping task, we save a list of valid IDs and replace the existing list with this one after the loop
@@ -568,7 +568,7 @@ class UserCommands(commands.Cog):
 			print(error.message)
 		elif isinstance(error, commands.errors.CheckFailure): pass
 		elif isinstance(error, commands.errors.MissingRequiredArgument):
-			await ctx.message.reply("Command missing required argument, see `!help`")
+			await ctx.message.reply(f"Command missing required argument, see `{self.bot.command_prefix}help`")
 		else: raise error
 
 bot = commands.Bot(PREFIX, case_insensitive=True)

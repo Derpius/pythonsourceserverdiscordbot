@@ -546,7 +546,7 @@ class UserCommands(commands.Cog):
 			if member is None: continue
 
 			validIDs.append(userID)
-			msg += (f"<@{ctx.message.author.id}>" if ctx.message.author.id == userID else "`" + member.name + "`") + ", "
+			msg += (f"<@{ctx.message.author.id}>" if ctx.message.author.id == userID else "`" + member.display_name + "`") + ", "
 
 		JSON[str(ctx.channel.id)]["toNotify"] = validIDs
 		await ctx.message.reply(msg[:-2])

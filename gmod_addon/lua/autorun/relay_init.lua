@@ -5,6 +5,7 @@ if SERVER then
 
 	util.AddNetworkString("DiscordRelay.NetworkMsg")
 	util.AddNetworkString("DiscordRelay.DSay")
+	DiscordRelay = {}
 
 	include("params.lua")
 	include("relay/relay.lua")

@@ -6,7 +6,9 @@ local toggle = false
 local toPost = {}
 local tickTimer = 0
 
-local function cachePost(body)
+local gm = gmod.GetGamemode()
+
+function DiscordRelay.CachePost(body)
 	local nonce = 1
 	local key = tostring(math.floor(CurTime()))..string.char(nonce)
 
@@ -21,6 +23,7 @@ local function cachePost(body)
 
 	toPost[key] = body
 end
+local cachePost = DiscordRelay.CachePost
 
 local function onChat(plr, msg, teamCht)
 	local teamColour = team.GetColor(plr:Team())
@@ -81,14 +84,15 @@ concommand.Add("startRelay", function(plr, cmd, args, argStr)
 						for _, msg in pairs(JSON.chat) do
 							print("[Discord | "..msg[4].."] " .. msg[1] .. ": " .. msg[2])
 							local colour = Color(msg[3][1], msg[3][2], msg[3][3])
-
-							net.Start("DiscordRelay.NetworkMsg")
-								net.WriteString(msg[1])
-								net.WriteString(msg[2])
-								net.WriteColor(colour)
-								net.WriteString(msg[4])
-								hook.Run("DiscordRelay.Message", msg[1], msg[2], colour, msg[4])
-							net.Broadcast()
+							
+							if hook.Call("DiscordRelay.Message", gm, msg[1], msg[2], colour, msg[4]) ~= false then
+								net.Start("DiscordRelay.NetworkMsg")
+									net.WriteString(msg[1])
+									net.WriteString(msg[2])
+									net.WriteColor(colour)
+									net.WriteString(msg[4])
+								net.Broadcast()
+							end
 						end
 
 						for i = 1, #JSON.rcon do

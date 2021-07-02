@@ -288,7 +288,7 @@ class ServerCommands(commands.Cog):
 
 		global lastAuthor
 
-		msgs = tuple(r.getMessages())[0]
+		msgs = r.getMessages()
 		for msg in msgs:
 			author = [msg["steamID"], time.time(), f"[{msg['teamName']}] {msg['name']}"]
 			lastMsg = (await self.bot.get_channel(relayChannel).history(limit=1).flatten())[0]
@@ -310,12 +310,12 @@ class ServerCommands(commands.Cog):
 				await lastMsg.edit(embed=embed)
 
 		# Handle custom events
-		custom = tuple(r.getCustom())[0]
+		custom = r.getCustom()
 		for body in custom:
 			await self.bot.get_channel(relayChannel).send(body)
 
 		# Handle death events
-		deaths = tuple(r.getDeaths())[0]
+		deaths = r.getDeaths()
 		for death in deaths:
 			if death[3] and not death[4]: # suicide with a weapon
 				await self.bot.get_channel(relayChannel).send(random.choice(messageFormats["suicide"]).replace("{victim}", death[0]).replace("{inflictor}", death[1]))
@@ -328,7 +328,7 @@ class ServerCommands(commands.Cog):
 
 		# Handle join and leave events
 		# (joins first incase someone joins then leaves in the same tenth of a second, so the leave message always comes after the join)
-		joinsAndLeaves = tuple(r.getJoinsAndLeaves())
+		joinsAndLeaves = r.getJoinsAndLeaves()
 
 		for name in joinsAndLeaves[0]:
 			await self.bot.get_channel(relayChannel).send(random.choice(messageFormats["joinMsgs"]).replace("{player}", name))

@@ -113,27 +113,31 @@ class Relay(object):
 	
 	def getMessages(self):
 		global sourceMsgs
-		yield sourceMsgs
+		ret = sourceMsgs
 		sourceMsgs = []
+		return ret
 
 	def getJoinsAndLeaves(self):
 		global joins
-		yield joins
+		ret = joins
 		joins = []
 
 		global leaves
-		yield leaves
+		ret1 = leaves
 		leaves = []
+		return (ret, ret1)
 
 	def getDeaths(self):
 		global deaths
-		yield deaths
+		ret = deaths
 		deaths = []
+		return ret
 		
 	def getCustom(self):
 		global custom
-		yield custom
+		ret = custom
 		custom = []
+		return ret
 
 if __name__ == "__main__":
 	r = Relay(8080)

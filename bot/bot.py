@@ -349,7 +349,7 @@ class ServerCommands(commands.Cog):
 
 		if msg.author.colour.value == 0: colour = (255, 255, 255)
 		else: colour = msg.author.colour.to_rgb()
-		if len(msg.content) != 0: r.addMessage((msg.author.display_name, msg.content, colour, msg.author.top_role.name))
+		if len(msg.content) != 0: r.addMessage((msg.author.display_name, msg.content, colour, msg.author.top_role.name, msg.clean_content))
 
 		for attachment in msg.attachments:
 			r.addMessage((msg.author.display_name, attachment.url, colour, msg.author.top_role.name))

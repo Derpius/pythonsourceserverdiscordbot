@@ -85,12 +85,13 @@ concommand.Add("startRelay", function(plr, cmd, args, argStr)
 							print("[Discord | "..msg[4].."] " .. msg[1] .. ": " .. msg[2])
 							local colour = Color(msg[3][1], msg[3][2], msg[3][3])
 							
-							if hook.Call("DiscordRelay.Message", gm, msg[1], msg[2], colour, msg[4]) ~= false then
+							if hook.Call("DiscordRelay.Message", gm, msg[1], msg[2], colour, msg[4], msg[5]) ~= false then
 								net.Start("DiscordRelay.NetworkMsg")
 									net.WriteString(msg[1])
 									net.WriteString(msg[2])
 									net.WriteColor(colour)
 									net.WriteString(msg[4])
+									net.WriteString(msg[5])
 								net.Broadcast()
 							end
 						end

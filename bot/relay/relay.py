@@ -67,7 +67,8 @@ class Handler(BaseHTTPRequestHandler):
 				return
 
 			if data[k]["type"] == "message":
-				match = avatarPattern.search(requests.get(f"http://steamcommunity.com/profiles/{data[k]['steamID']}?xml=1").text).group(1)
+				match = avatarPattern.search(requests.get(f"http://steamcommunity.com/profiles/{data[k]['steamID']}?xml=1").text)
+				if match is not None: match = match.group(1)
 				data[k]["icon"] = "http://example.com/" if match is None else match
 
 				global sourceMsgs

@@ -352,7 +352,7 @@ class ServerCommands(commands.Cog):
 		if len(msg.content) != 0: r.addMessage((msg.author.display_name, msg.content, colour, msg.author.top_role.name, msg.clean_content))
 
 		for attachment in msg.attachments:
-			r.addMessage((msg.author.display_name, attachment.url, colour, msg.author.top_role.name))
+			r.addMessage((msg.author.display_name, attachment.url, colour, msg.author.top_role.name, attachment.url))
 
 # User commands
 class UserCommands(commands.Cog):

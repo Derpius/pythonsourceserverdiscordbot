@@ -1,5 +1,6 @@
 import os
 import atexit
+from discord.embeds import _EmptyEmbed
 from dotenv import load_dotenv
 import json
 from datetime import timedelta
@@ -299,7 +300,8 @@ class ServerCommands(commands.Cog):
 				len(lastMsg.embeds) == 0 or
 				lastMsg.embeds[0].author.name != author[2] or
 				author[1] - lastAuthor[1] > 420 or
-				len(lastMsg.embeds[0].description) + len(msg["message"]) > 1024
+				lastMsg.embeds[0].description == discord.Embed.Empty or
+				len(lastMsg.embeds[0].description) + len(msg["message"]) > 4096
 			):
 				embed = discord.Embed(description=msg["message"], colour=discord.Colour.from_rgb(*[int(val) for val in msg["teamColour"].split(",")]))
 				embed.set_author(name=author[2], icon_url=msg["icon"])

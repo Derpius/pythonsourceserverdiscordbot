@@ -1,6 +1,6 @@
 # Python Source Server Query Library Discord Bot
 Discord bot for my Python source server query library  
-*See https://github.com/100PXSquared/pythonsourceserver*
+*See https://github.com/Derpius/pythonsourceserver*
 
 ## Installation  
 The bot needs a few packages to work:  

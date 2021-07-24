@@ -13,6 +13,20 @@ sourceMsgs = {}
 
 avatarPattern = re.compile(r"<avatarIcon><!\[CDATA\[(.*?)\]\]></avatarIcon>")
 
+# https://stackoverflow.com/a/28950776
+def get_ip():
+	s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+	try:
+		# doesn't even have to be reachable
+		s.connect(('10.255.255.255', 1))
+		IP = s.getsockname()[0]
+	except Exception:
+		print("Unable to retrieve LAN IP")
+		IP = '127.0.0.1'
+	finally:
+		s.close()
+	return IP
+
 def relayThread(port):
 	def onExit(filepath: str):
 		print("Relay thread shutdown")
@@ -38,8 +52,8 @@ class Handler(BaseHTTPRequestHandler):
 			self.send_response(400)
 			self.end_headers()
 			return
-		
-		constring = f"{self.client_address[0] if self.client_address[0] != '127.0.0.1' else socket.gethostbyname(socket.gethostname())}:{self.headers['Source-Port']}"
+
+		constring = f"{self.client_address[0] if self.client_address[0] != '127.0.0.1' else get_ip()}:{self.headers['Source-Port']}"
 		if constring not in discordMsgs:
 			self.send_response(403)
 			self.end_headers()
@@ -54,20 +68,20 @@ class Handler(BaseHTTPRequestHandler):
 			return
 		self.wfile.write(bytes(json.dumps(discordMsgs[constring]), encoding="utf-8"))	
 		discordMsgs[constring] = {"chat": [], "rcon": []}
-	
+
 	def do_POST(self):
 		'''The "receiver" for source server chat'''
 		if "Source-Port" not in self.headers:
 			self.send_response(400)
 			self.end_headers()
 			return
-		
-		constring = f"{self.client_address[0] if self.client_address[0] != '127.0.0.1' else socket.gethostbyname(socket.gethostname())}:{self.headers['Source-Port']}"
+
+		constring = f"{self.client_address[0] if self.client_address[0] != '127.0.0.1' else get_ip()}:{self.headers['Source-Port']}"
 		if constring not in sourceMsgs:
 			self.send_response(403)
 			self.end_headers()
 			return
-		
+
 		if self.headers["Content-type"] != "application/json":
 			print(f"Request MIME type of {self.headers['Content-type']} is invalid")
 			self.send_error(400, explain=f"Request MIME type of {self.headers['Content-type']} is invalid")
@@ -121,13 +135,13 @@ class Relay(object):
 	def removeConStr(self, constring: str):
 		del discordMsgs[constring]
 		del sourceMsgs[constring]
-	
+
 	def addMessage(self, msg: tuple, constring: str):
 		discordMsgs[constring]["chat"].append(msg)
-	
+
 	def addRCON(self, command: str, constring: str):
 		discordMsgs[constring]["rcon"].append(command)
-	
+
 	def getMessages(self, constring: str) -> list:
 		ret = sourceMsgs[constring]["chat"]
 		sourceMsgs[constring]["chat"] = []
@@ -143,7 +157,7 @@ class Relay(object):
 		ret = sourceMsgs[constring]["deaths"]
 		sourceMsgs[constring]["deaths"] = []
 		return ret
-		
+
 	def getCustom(self, constring: str) -> list:
 		ret = sourceMsgs[constring]["custom"]
 		sourceMsgs[constring]["custom"] = []

@@ -25,12 +25,15 @@ TIME_DOWN_BEFORE_NOTIFY = int(os.getenv("TIME_DOWN_BEFORE_NOTIFY"))
 COLOUR = int(os.getenv("COLOUR"), 16)
 PORT = int(os.getenv("RELAY_PORT"))
 
+# Init relay http server
+lastAuthor = ["", 0]
+r = Relay(PORT)
+
 # Load data from json
 JSON = json.load(open(os.path.join(os.path.dirname(os.path.realpath(__file__)), "data.json"), "r"))
-relayChannel = JSON[1]
-JSON = JSON[0]
 
 for channelID, connectionObj in JSON.items():
+	if JSON[channelID]["relay"] == 1: r.addConStr(connectionObj["server"])
 	JSON[channelID]["server"] = SourceServer(connectionObj["server"])
 	JSON[channelID]["time_since_down"] = -1
 
@@ -51,17 +54,13 @@ if "kill" not in messageFormats.keys() or len(messageFormats["kill"]) == 0:
 if "killNoWeapon" not in messageFormats.keys() or len(messageFormats["killNoWeapon"]) == 0:
 	messageFormats["killNoWeapon"] = ["`{attacker}` killed `{victim}`"]
 
-# Init relay http server
-lastAuthor = ["", 0]
-r = Relay(PORT)
-
 # Define and register clean shutdown function
 def onExit(filepath: str):
 	print("Performing safe shutdown")
 
 	for channelID, connectionObj in JSON.items():
 		JSON[channelID]["server"] = "%s:%d" % (connectionObj["server"]._ip, connectionObj["server"]._port)
-	json.dump([JSON, relayChannel], open(os.path.join(os.path.dirname(os.path.realpath(filepath)), "data.json"), "w"))
+	json.dump(JSON, open(os.path.join(os.path.dirname(os.path.realpath(filepath)), "data.json"), "w"))
 
 atexit.register(onExit, __file__)
 
@@ -103,7 +102,7 @@ class ServerCommands(commands.Cog):
 	async def connect(self, ctx, connectionString: str):
 		'''Adds a connection to a source server to this channel'''
 		channelID = str(ctx.channel.id)
-		if channelID in JSON.keys():
+		if channelID in JSON:
 			existingConnection = f"{JSON[channelID]['server']._ip}:{JSON[channelID]['server']._port}"
 			if connectionString == existingConnection:
 				await ctx.message.reply("This channel is already connected to that server")
@@ -118,15 +117,17 @@ class ServerCommands(commands.Cog):
 		else:
 			if server.isClosed: await ctx.message.reply("Failed to connect to server")
 			else:
-				JSON.update({channelID: {"server": server, "toNotify": [], "time_since_down": -1}})
+				JSON.update({channelID: {"server": server, "toNotify": [], "time_since_down": -1, "relay": 0}})
 				await ctx.message.reply("Successfully connected to server!")
+				r.addConStr(connectionString)
 
 	@commands.command()
 	async def disconnect(self, ctx):
 		'''Removes this channel's connection to a source server'''
 		channelID = str(ctx.channel.id)
-		if channelID not in JSON.keys(): await ctx.message.reply("This channel isn't connected to a server"); return
+		if channelID not in JSON: await ctx.message.reply("This channel isn't connected to a server"); return
 
+		r.removeConStr(f"{JSON[channelID]['server']._ip}:{JSON[channelID]['server']._port}")
 		del JSON[channelID]
 		await ctx.message.reply("Connection removed successfully!")
 
@@ -134,7 +135,7 @@ class ServerCommands(commands.Cog):
 	async def close(self, ctx):
 		'''Closes the connection to the server'''
 		channelID = str(ctx.channel.id)
-		if channelID not in JSON.keys(): return
+		if channelID not in JSON: return
 		if JSON[channelID]["server"].isClosed: await ctx.message.reply("Server is already closed"); return
 
 		JSON[channelID]["server"].close()
@@ -144,7 +145,7 @@ class ServerCommands(commands.Cog):
 	async def retry(self, ctx):
 		'''Attempts to reconnect to the server'''
 		channelID = str(ctx.channel.id)
-		if channelID not in JSON.keys(): return
+		if channelID not in JSON: return
 		if not JSON[channelID]["server"].isClosed: await ctx.message.reply("Server is already connected"); return
 		serverCon = JSON[channelID]
 
@@ -174,20 +175,29 @@ class ServerCommands(commands.Cog):
 				autoclosed.remove(channelID)
 
 	@commands.command()
-	async def relayHere(self, ctx):
-		'''Sets this channel as game chat relay destination'''
-		global relayChannel
-		relayChannel = ctx.channel.id
+	async def enableRelay(self, ctx):
+		'''Enables the relay in this channel'''
+		channelID = str(ctx.channel.id)
+		if channelID not in JSON: await ctx.message.reply("This channel is not connected to a server"); return
 
+		serverCon = JSON[channelID]
+		if serverCon["server"].isClosed: await ctx.message.reply("Server connection is closed"); return
+
+		if serverCon["relay"] == 1: await ctx.message.reply("The relay is already enabled"); return
+		serverCon["relay"] = 1
 		await ctx.message.reply("Relay set successfully!")
 
 	@commands.command()
 	async def disableRelay(self, ctx):
-		'''Disables relay (note, the relay thread will still run)'''
-		global relayChannel
-		relayChannel = None
+		'''Disables the relay in this channel'''
+		channelID = str(ctx.channel.id)
+		if channelID not in JSON: await ctx.message.reply("This channel is not connected to a server"); return
 
-		await ctx.message.reply(f"Relay disabled, use `{self.bot.command_prefix}relayHere` to re-enable")
+		serverCon = JSON[channelID]
+
+		if serverCon["relay"] == 0: await ctx.message.reply("The relay is already disabled"); return
+		serverCon["relay"] = 0
+		await ctx.message.reply(f"Relay disabled, use `{self.bot.command_prefix}enableRelay` to re-enable")
 	
 	@commands.command()
 	async def rcon(self, ctx):
@@ -195,17 +205,20 @@ class ServerCommands(commands.Cog):
 		Runs a string in the relay client's console  
 		(may not be supported by all clients)
 		'''
-		if ctx.channel.id != relayChannel:
-			await ctx.message.reply("Relay is not enabled in this channel")
-			return
+		channelID = str(ctx.channel.id)
+		if channelID not in JSON: await ctx.message.reply("This channel is not connected to a server"); return
+
+		serverCon = JSON[channelID]
+		if serverCon["relay"] == 0: await ctx.message.reply("The relay isn't enabled for this server"); return
 		
 		sanetised = ctx.message.content[len(self.bot.command_prefix + "rcon "):].replace("\n", ";")
+		constring = f'{serverCon["server"]._ip}:{serverCon["server"]._port}'
 
 		if len(sanetised) == 0:
 			await ctx.message.reply("No command string specified")
 			return
 
-		r.addRCON(sanetised)
+		r.addRCON(sanetised, constring)
 		await ctx.message.reply(f"Command `{sanetised if len(sanetised) < 256 else sanetised[:256] + '...'}` queued")
 
 	# Cog error handler
@@ -285,62 +298,67 @@ class ServerCommands(commands.Cog):
 	@tasks.loop(seconds=0.1)
 	async def getFromRelay(self):
 		await self.bot.wait_until_ready()
-		if relayChannel is None: return
-
 		global lastAuthor
 
-		msgs = r.getMessages()
-		for msg in msgs:
-			author = [msg["steamID"], time.time(), f"[{msg['teamName']}] {msg['name']}"]
-			lastMsg = (await self.bot.get_channel(relayChannel).history(limit=1).flatten())[0]
+		for channelID in JSON.keys():
+			channelIDInt = int(channelID)
+			serverCon = JSON[channelID]
+			if serverCon["server"].isClosed or serverCon["relay"] == 0: continue
 
-			if (
-				author[0] != lastAuthor[0] or
-				lastMsg.author.id != self.bot.user.id or
-				len(lastMsg.embeds) == 0 or
-				lastMsg.embeds[0].author.name != author[2] or
-				author[1] - lastAuthor[1] > 420 or
-				lastMsg.embeds[0].description == discord.Embed.Empty or
-				len(lastMsg.embeds[0].description) + len(msg["message"]) > 4096
-			):
-				embed = discord.Embed(description=msg["message"], colour=discord.Colour.from_rgb(*[int(val) for val in msg["teamColour"].split(",")]))
-				embed.set_author(name=author[2], icon_url=msg["icon"])
-				await self.bot.get_channel(relayChannel).send(embed=embed)
-				lastAuthor = author
-			else:
-				embed = discord.Embed(description=lastMsg.embeds[0].description + "\n" + msg["message"], colour=discord.Colour.from_rgb(*[int(val) for val in msg["teamColour"].split(",")]))
-				embed.set_author(name=author[2], icon_url=msg["icon"])
-				await lastMsg.edit(embed=embed)
+			constring = f'{serverCon["server"]._ip}:{serverCon["server"]._port}'
+			msgs = r.getMessages(constring)
+			for msg in msgs:
+				author = [msg["steamID"], time.time(), f"[{msg['teamName']}] {msg['name']}"]
+				lastMsg = (await self.bot.get_channel(channelIDInt).history(limit=1).flatten())[0]
 
-		# Handle custom events
-		custom = r.getCustom()
-		for body in custom:
-			await self.bot.get_channel(relayChannel).send(body)
+				if (
+					author[0] != lastAuthor[0] or
+					lastMsg.author.id != self.bot.user.id or
+					len(lastMsg.embeds) == 0 or
+					lastMsg.embeds[0].author.name != author[2] or
+					author[1] - lastAuthor[1] > 420 or
+					lastMsg.embeds[0].description == discord.Embed.Empty or
+					len(lastMsg.embeds[0].description) + len(msg["message"]) > 4096
+				):
+					embed = discord.Embed(description=msg["message"], colour=discord.Colour.from_rgb(*[int(val) for val in msg["teamColour"].split(",")]))
+					embed.set_author(name=author[2], icon_url=msg["icon"])
+					await self.bot.get_channel(channelIDInt).send(embed=embed)
+					lastAuthor = author
+				else:
+					embed = discord.Embed(description=lastMsg.embeds[0].description + "\n" + msg["message"], colour=discord.Colour.from_rgb(*[int(val) for val in msg["teamColour"].split(",")]))
+					embed.set_author(name=author[2], icon_url=msg["icon"])
+					await lastMsg.edit(embed=embed)
 
-		# Handle death events
-		deaths = r.getDeaths()
-		for death in deaths:
-			if death[3] and not death[4]: # suicide with a weapon
-				await self.bot.get_channel(relayChannel).send(random.choice(messageFormats["suicide"]).replace("{victim}", death[0]).replace("{inflictor}", death[1]))
-			elif death[3]: # suicide without a weapon
-				await self.bot.get_channel(relayChannel).send(random.choice(messageFormats["suicideNoWeapon"]).replace("{victim}", death[0]))
-			elif not death[4]: # kill with a weapon
-				await self.bot.get_channel(relayChannel).send(random.choice(messageFormats["kill"]).replace("{victim}", death[0]).replace("{inflictor}", death[1]).replace("{attacker}", death[2]))
-			else: # kill without a weapon
-				await self.bot.get_channel(relayChannel).send(random.choice(messageFormats["killNoWeapon"]).replace("{victim}", death[0]).replace("{attacker}", death[2]))
+			# Handle custom events
+			custom = r.getCustom(constring)
+			for body in custom:
+				await self.bot.get_channel(channelIDInt).send(body)
 
-		# Handle join and leave events
-		# (joins first incase someone joins then leaves in the same tenth of a second, so the leave message always comes after the join)
-		joinsAndLeaves = r.getJoinsAndLeaves()
+			# Handle death events
+			deaths = r.getDeaths(constring)
+			for death in deaths:
+				if death[3] and not death[4]: # suicide with a weapon
+					await self.bot.get_channel(channelIDInt).send(random.choice(messageFormats["suicide"]).replace("{victim}", death[0]).replace("{inflictor}", death[1]))
+				elif death[3]: # suicide without a weapon
+					await self.bot.get_channel(channelIDInt).send(random.choice(messageFormats["suicideNoWeapon"]).replace("{victim}", death[0]))
+				elif not death[4]: # kill with a weapon
+					await self.bot.get_channel(channelIDInt).send(random.choice(messageFormats["kill"]).replace("{victim}", death[0]).replace("{inflictor}", death[1]).replace("{attacker}", death[2]))
+				else: # kill without a weapon
+					await self.bot.get_channel(channelIDInt).send(random.choice(messageFormats["killNoWeapon"]).replace("{victim}", death[0]).replace("{attacker}", death[2]))
 
-		for name in joinsAndLeaves[0]:
-			await self.bot.get_channel(relayChannel).send(random.choice(messageFormats["joinMsgs"]).replace("{player}", name))
-		for name in joinsAndLeaves[1]:
-			await self.bot.get_channel(relayChannel).send(random.choice(messageFormats["leaveMsgs"]).replace("{player}", name))
+			# Handle join and leave events
+			# (joins first incase someone joins then leaves in the same tenth of a second, so the leave message always comes after the join)
+			joinsAndLeaves = r.getJoinsAndLeaves(constring)
+
+			for name in joinsAndLeaves[0]:
+				await self.bot.get_channel(channelIDInt).send(random.choice(messageFormats["joinMsgs"]).replace("{player}", name))
+			for name in joinsAndLeaves[1]:
+				await self.bot.get_channel(channelIDInt).send(random.choice(messageFormats["leaveMsgs"]).replace("{player}", name))
 
 	@commands.Cog.listener()
 	async def on_message(self, msg: discord.Message):
-		if msg.channel.id != relayChannel or msg.author.bot: return
+		channelID = str(msg.channel.id)
+		if msg.author.bot or channelID not in JSON or JSON[channelID]["relay"] == 0: return
 
 		if ( # If the message is using the command prefix, check if it's a valid command
 			len(msg.content) > len(self.bot.command_prefix) and
@@ -350,12 +368,13 @@ class ServerCommands(commands.Cog):
 			for cmd in self.bot.commands:
 				if cmd.name == cmdText: return # Don't relay the message if it's a valid bot command
 
+		constring = f'{JSON[channelID]["server"]._ip}:{JSON[channelID]["server"]._port}'
 		if msg.author.colour.value == 0: colour = (255, 255, 255)
 		else: colour = msg.author.colour.to_rgb()
-		if len(msg.content) != 0: r.addMessage((msg.author.display_name, msg.content, colour, msg.author.top_role.name, msg.clean_content))
+		if len(msg.content) != 0: r.addMessage((msg.author.display_name, msg.content, colour, msg.author.top_role.name, msg.clean_content), constring)
 
 		for attachment in msg.attachments:
-			r.addMessage((msg.author.display_name, attachment.url, colour, msg.author.top_role.name, attachment.url))
+			r.addMessage((msg.author.display_name, attachment.url, colour, msg.author.top_role.name, attachment.url), constring)
 
 # User commands
 class UserCommands(commands.Cog):

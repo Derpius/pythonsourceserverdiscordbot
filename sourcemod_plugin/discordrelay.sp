@@ -13,6 +13,7 @@ JSON_Object gToPost = null;
 
 int gTickTimer;
 bool gActive;
+bool gDidAutoShutoff;
 
 public Plugin myinfo = {
 	name = "CS:GO Discord Relay Client",
@@ -87,6 +88,7 @@ public void OnPluginStart()
 {
 	gTickTimer = 0;
 	gActive = false;
+	gDidAutoShutoff = false;
 
 	PrintToServer("HTTP Relay Client Loaded!");
 
@@ -200,6 +202,9 @@ public void OnClientConnected(int client)
 	body.SetString("name", name);
 
 	CachePost(body);
+
+	// Edge case: if this join event will cause the server to exit hibernation, turn on the relay
+	if (!gActive && gDidAutoShutoff && GetClientCount(false) == 1 && gHibernate.BoolValue) ServerCommand("relay_start");
 }
 
 public void OnClientDisconnect(int client)
@@ -214,7 +219,10 @@ public void OnClientDisconnect(int client)
 	CachePost(body);
 
 	// Edge case: if this leave event will cause the server to go into hibernation, turn off the relay
-	if (GetClientCount(false) <= 2 && gHibernate.BoolValue) ServerCommand("relay_stop");
+	if (gActive && GetClientCount(false) <= 2 && gHibernate.BoolValue) {
+		gDidAutoShutoff = true;
+		ServerCommand("relay_stop");
+	}
 }
 
 /*
@@ -294,6 +302,7 @@ public Action StartRelay(int client, int args)
 	ReplyToCommand(client, "Relay started");
 	NetworkString("{\"0\":{\"type\":\"custom\",\"body\":\"Relay client connected!\"}}");
 	gActive = true;
+	gDidAutoShutoff = false;
 	return Plugin_Handled;
 }
 

@@ -127,3 +127,12 @@ dmypy.json
 
 # Pyre type checker
 .pyre/
+
+# VS Code Folder
+.vscode/
+
+# SourceMod Compile Script
+sourcemod_plugin/compile.bat
+
+# SourceMod Binaries
+*.smx

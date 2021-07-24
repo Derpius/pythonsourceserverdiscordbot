@@ -6,8 +6,9 @@ import json
 from time import sleep
 import requests
 import re
+import socket
 
-discordMsgs = {"chat": [], "rcon": []}
+discordMsgs = {}
 sourceMsgs = {}
 
 avatarPattern = re.compile(r"<avatarIcon><!\[CDATA\[(.*?)\]\]></avatarIcon>")
@@ -38,7 +39,7 @@ class Handler(BaseHTTPRequestHandler):
 			self.end_headers()
 			return
 		
-		constring = f"{self.client_address[0]}:{self.headers['Source-Port']}"
+		constring = f"{self.client_address[0] if self.client_address[0] != '127.0.0.1' else socket.gethostbyname(socket.gethostname())}:{self.headers['Source-Port']}"
 		if constring not in discordMsgs:
 			self.send_response(403)
 			self.end_headers()
@@ -61,7 +62,7 @@ class Handler(BaseHTTPRequestHandler):
 			self.end_headers()
 			return
 		
-		constring = f"{self.client_address[0]}:{self.headers['Source-Port']}"
+		constring = f"{self.client_address[0] if self.client_address[0] != '127.0.0.1' else socket.gethostbyname(socket.gethostname())}:{self.headers['Source-Port']}"
 		if constring not in sourceMsgs:
 			self.send_response(403)
 			self.end_headers()

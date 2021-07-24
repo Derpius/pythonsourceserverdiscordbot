@@ -1,5 +1,6 @@
 local sv_hibernate_think = GetConVar("sv_hibernate_think")
 local relay_connection, relay_interval = GetConVar("relay_connection"), GetConVar("relay_interval")
+local hostport = GetConVar("hostport")
 
 local toggle = false
 
@@ -50,7 +51,8 @@ concommand.Add("startRelay", function(plr, cmd, args, argStr)
 					method = "POST",
 					url = "http://"..relay_connection:GetString(),
 					body = util.TableToJSON(toPost),
-					type = "application/json"
+					type = "application/json",
+					headers = {["Source-Port"] = hostport:GetString()}
 				})
 				toPost = {}
 			end
@@ -71,7 +73,8 @@ concommand.Add("startRelay", function(plr, cmd, args, argStr)
 					method = "POST",
 					url = "http://"..relay_connection:GetString(),
 					body = util.TableToJSON(toPost),
-					type = "application/json"
+					type = "application/json",
+					headers = {["Source-Port"] = hostport:GetString()}
 				})
 				toPost = {}
 			elseif tickTimer == math.floor(relay_interval:GetInt() / 2) then
@@ -101,7 +104,8 @@ concommand.Add("startRelay", function(plr, cmd, args, argStr)
 						end
 					end,
 					method = "GET",
-					url = "http://"..relay_connection:GetString()
+					url = "http://"..relay_connection:GetString(),
+					headers = {["Source-Port"] = hostport:GetString()}
 				})
 			end
 		end)
@@ -111,7 +115,8 @@ concommand.Add("startRelay", function(plr, cmd, args, argStr)
 			method = "POST",
 			url = "http://"..relay_connection:GetString(),
 			body = '{"0":{"type":"custom","body":"Relay client connected!"}}',
-			type = "application/json"
+			type = "application/json",
+			headers = {["Source-Port"] = hostport:GetString()}
 		})
 	end
 end)
@@ -134,7 +139,8 @@ concommand.Add("stopRelay", function(plr, cmd, args, argStr)
 			method = "POST",
 			url = "http://"..relay_connection:GetString(),
 			body = util.TableToJSON(toPost),
-			type = "application/json"
+			type = "application/json",
+			headers = {["Source-Port"] = hostport:GetString()}
 		})
 		toPost = {}
 	end
@@ -157,7 +163,8 @@ concommand.Add("dsay", function(plr, cmd, args, argStr)
 			method = "POST",
 			url = "http://"..relay_connection:GetString(),
 			body = util.TableToJSON(toPost),
-			type = "application/json"
+			type = "application/json",
+			headers = {["Source-Port"] = hostport:GetString()}
 		})
 		toPost = {}
 	end

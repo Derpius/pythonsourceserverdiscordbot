@@ -340,7 +340,7 @@ class ServerCommands(commands.Cog):
 					await lastMsg.edit(embed=embed)
 				
 				if urlPattern.match(msg["message"]) is not None: # Message is a URL by itself, post separately for the embed
-					await lastMsg.reply(f"`{author[2]}` posted a URL: {msg['message']}")
+					await lastMsg.reply(msg['message'])
 
 			# Handle custom events
 			custom = r.getCustom(constring)

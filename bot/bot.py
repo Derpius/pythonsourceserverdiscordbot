@@ -7,6 +7,7 @@ from datetime import timedelta
 from typing import Union
 import random
 import time
+import re
 
 import discord
 from discord.ext import commands, tasks
@@ -16,6 +17,15 @@ from sourceserver.sourceserver import SourceServer
 from sourceserver.exceptions import SourceError
 
 from relay.relay import Relay
+
+urlPattern = re.compile(
+	r'^(?:http|ftp)s?://' # http:// or https://
+	r'(?:(?:[A-Z0-9](?:[A-Z0-9-]{0,61}[A-Z0-9])?\.)+(?:[A-Z]{2,6}\.?|[A-Z0-9-]{2,}\.?)|' #domain...
+	r'localhost|' #localhost...
+	r'\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})' # ...or ip
+	r'(?::\d+)?' # optional port
+	r'(?:/?|[/?]\S+)$', re.IGNORECASE
+)
 
 # Initialise variables from local storage
 load_dotenv()
@@ -322,12 +332,15 @@ class ServerCommands(commands.Cog):
 				):
 					embed = discord.Embed(description=msg["message"], colour=discord.Colour.from_rgb(*[int(val) for val in msg["teamColour"].split(",")]))
 					embed.set_author(name=author[2], icon_url=msg["icon"])
-					await self.bot.get_channel(channelIDInt).send(embed=embed)
+					lastMsg = await self.bot.get_channel(channelIDInt).send(embed=embed)
 					lastAuthor = author
 				else:
 					embed = discord.Embed(description=lastMsg.embeds[0].description + "\n" + msg["message"], colour=discord.Colour.from_rgb(*[int(val) for val in msg["teamColour"].split(",")]))
 					embed.set_author(name=author[2], icon_url=msg["icon"])
 					await lastMsg.edit(embed=embed)
+				
+				if urlPattern.match(msg["message"]) is not None: # Message is a URL by itself, post separately for the embed
+					await lastMsg.reply(f"`{author[2]}` posted a URL: {msg['message']}")
 
 			# Handle custom events
 			custom = r.getCustom(constring)

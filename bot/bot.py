@@ -69,7 +69,7 @@ def onExit(filepath: str):
 	print("Performing safe shutdown")
 
 	for channelID, connectionObj in JSON.items():
-		JSON[channelID]["server"] = "%s:%d" % (connectionObj["server"]._ip, connectionObj["server"]._port)
+		JSON[channelID]["server"] = connectionObj["server"].constr
 	json.dump(JSON, open(os.path.join(os.path.dirname(os.path.realpath(filepath)), "data.json"), "w"))
 
 atexit.register(onExit, __file__)
@@ -113,7 +113,7 @@ class ServerCommands(commands.Cog):
 		'''Adds a connection to a source server to this channel'''
 		channelID = str(ctx.channel.id)
 		if channelID in JSON:
-			existingConnection = f"{JSON[channelID]['server']._ip}:{JSON[channelID]['server']._port}"
+			existingConnection = JSON[channelID]['server'].constr
 			if connectionString == existingConnection:
 				await ctx.message.reply("This channel is already connected to that server")
 				return
@@ -137,7 +137,7 @@ class ServerCommands(commands.Cog):
 		channelID = str(ctx.channel.id)
 		if channelID not in JSON: await ctx.message.reply("This channel isn't connected to a server"); return
 
-		r.removeConStr(f"{JSON[channelID]['server']._ip}:{JSON[channelID]['server']._port}")
+		r.removeConStr(JSON[channelID]['server'].constr)
 		del JSON[channelID]
 		await ctx.message.reply("Connection removed successfully!")
 
@@ -178,7 +178,7 @@ class ServerCommands(commands.Cog):
 					validIDs.append(personToNotify)
 
 					await member.send(f'''
-					The Source Dedicated Server `{serverCon["server"]._info["name"] if serverCon["server"]._info != {} else "unknown"}` @ `{serverCon["server"]._ip}:{serverCon["server"]._port}` assigned to this bot just came back up!\n*You are receiving this message as you are set to be notified regarding server outage at `{ctx.guild.name}`*
+					The Source Dedicated Server `{serverCon["server"]._info["name"] if serverCon["server"]._info != {} else "unknown"}` @ `{serverCon["server"].constr}` assigned to this bot just came back up!\n*You are receiving this message as you are set to be notified regarding server outage at `{ctx.guild.name}`*
 					''')
 
 				JSON[channelID]["toNotify"] = validIDs
@@ -222,13 +222,11 @@ class ServerCommands(commands.Cog):
 		if serverCon["relay"] == 0: await ctx.message.reply("The relay isn't enabled for this server"); return
 		
 		sanetised = ctx.message.content[len(self.bot.command_prefix + "rcon "):].replace("\n", ";")
-		constring = f'{serverCon["server"]._ip}:{serverCon["server"]._port}'
-
 		if len(sanetised) == 0:
 			await ctx.message.reply("No command string specified")
 			return
 
-		r.addRCON(sanetised, constring)
+		r.addRCON(sanetised, serverCon["server"].constr)
 		await ctx.message.reply(f"Command `{sanetised if len(sanetised) < 256 else sanetised[:256] + '...'}` queued")
 
 	# Cog error handler
@@ -273,7 +271,7 @@ class ServerCommands(commands.Cog):
 
 						guildName = self.bot.get_channel(int(channelID)).guild.name
 						await member.send(f'''
-						The Source Dedicated Server `{serverCon["server"]._info["name"] if serverCon["server"]._info != {} else "unknown"}` @ `{serverCon["server"]._ip}:{serverCon["server"]._port}` assigned to this bot just came back up!\n*You are receiving this message as you are set to be notified regarding server outage at `{guildName}`*
+						The Source Dedicated Server `{serverCon["server"]._info["name"] if serverCon["server"]._info != {} else "unknown"}` @ `{serverCon["server"].constr}` assigned to this bot just came back up!\n*You are receiving this message as you are set to be notified regarding server outage at `{guildName}`*
 						''')
 
 					JSON[channelID]["toNotify"] = validIDs
@@ -296,7 +294,7 @@ class ServerCommands(commands.Cog):
 
 					guildName = self.bot.get_channel(int(channelID)).guild.name
 					await member.send(f'''
-					**WARNING:** The Source Dedicated Server `{serverCon["server"]._info["name"] if serverCon["server"]._info != {} else "unknown"}` @ `{serverCon["server"]._ip}:{serverCon["server"]._port}` assigned to this bot is down!\n*You are receiving this message as you are set to be notified regarding server outage at `{guildName}`*
+					**WARNING:** The Source Dedicated Server `{serverCon["server"]._info["name"] if serverCon["server"]._info != {} else "unknown"}` @ `{serverCon["server"].constr}` assigned to this bot is down!\n*You are receiving this message as you are set to be notified regarding server outage at `{guildName}`*
 					''')
 
 				JSON[channelID]["toNotify"] = validIDs
@@ -315,7 +313,7 @@ class ServerCommands(commands.Cog):
 			serverCon = JSON[channelID]
 			if serverCon["server"].isClosed or serverCon["relay"] == 0: continue
 
-			constring = f'{serverCon["server"]._ip}:{serverCon["server"]._port}'
+			constring = serverCon["server"].constr
 			msgs = r.getMessages(constring)
 			for msg in msgs:
 				author = [msg["steamID"], time.time(), f"[{msg['teamName']}] {msg['name']}"]
@@ -381,7 +379,7 @@ class ServerCommands(commands.Cog):
 			for cmd in self.bot.commands:
 				if cmd.name == cmdText: return # Don't relay the message if it's a valid bot command
 
-		constring = f'{JSON[channelID]["server"]._ip}:{JSON[channelID]["server"]._port}'
+		constring = JSON[channelID]["server"].constr
 		if msg.author.colour.value == 0: colour = (255, 255, 255)
 		else: colour = msg.author.colour.to_rgb()
 		if len(msg.content) != 0: r.addMessage((msg.author.display_name, msg.content, "%02x%02x%02x" % colour, msg.author.top_role.name, msg.clean_content), constring)

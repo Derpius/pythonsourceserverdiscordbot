@@ -204,8 +204,8 @@ class ServerCommands(commands.Cog):
 		if channelID not in JSON: await ctx.message.reply("This channel is not connected to a server"); return
 
 		serverCon = JSON[channelID]
-
 		if serverCon["relay"] == 0: await ctx.message.reply("The relay is already disabled"); return
+
 		serverCon["relay"] = 0
 		await ctx.message.reply(f"Relay disabled, use `{self.bot.command_prefix}enableRelay` to re-enable")
 	
@@ -219,6 +219,7 @@ class ServerCommands(commands.Cog):
 		if channelID not in JSON: await ctx.message.reply("This channel is not connected to a server"); return
 
 		serverCon = JSON[channelID]
+		if serverCon["server"].isClosed: await ctx.message.reply("The server is closed"); return
 		if serverCon["relay"] == 0: await ctx.message.reply("The relay isn't enabled for this server"); return
 		
 		sanetised = ctx.message.content[len(self.bot.command_prefix + "rcon "):].replace("\n", ";")
@@ -228,6 +229,13 @@ class ServerCommands(commands.Cog):
 
 		r.addRCON(sanetised, serverCon["server"].constr)
 		await ctx.message.reply(f"Command `{sanetised if len(sanetised) < 256 else sanetised[:256] + '...'}` queued")
+	
+	@commands.command()
+	async def constring(self, ctx):
+		'''Prints the current constring of the connected server'''
+		channelID = str(ctx.channel.id)
+		if channelID not in JSON: await ctx.message.reply("This channel is not connected to a server"); return
+		await ctx.message.reply(f"`{JSON[channelID]['server'].constr}`")
 
 	# Cog error handler
 	async def cog_command_error(self, ctx, error):
@@ -369,7 +377,7 @@ class ServerCommands(commands.Cog):
 	@commands.Cog.listener()
 	async def on_message(self, msg: discord.Message):
 		channelID = str(msg.channel.id)
-		if msg.author.bot or channelID not in JSON or JSON[channelID]["relay"] == 0: return
+		if msg.author.bot or channelID not in JSON or JSON[channelID]["relay"] == 0 or JSON[channelID]["server"].isClosed: return
 
 		if ( # If the message is using the command prefix, check if it's a valid command
 			len(msg.content) > len(self.bot.command_prefix) and

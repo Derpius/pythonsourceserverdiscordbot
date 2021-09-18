@@ -457,10 +457,12 @@ class UserCommands(commands.Cog):
 	async def players(self, ctx):
 		'''Gets all players on the server'''
 
+		# Get server details
 		try:
+			info = JSON[str(ctx.channel.id)]["server"].info
 			count, plrs = JSON[str(ctx.channel.id)]["server"].getPlayers()
-			isTheShip = JSON[str(ctx.channel.id)]["server"].info["game"] == "The Ship"
-			srvName = JSON[str(ctx.channel.id)]["server"].info["name"]
+			isTheShip = info["game"] == "The Ship"
+			srvName = info["name"]
 		except SourceError as e:
 			await ctx.message.reply("Unable to get players")
 			print(e.message)
@@ -470,19 +472,28 @@ class UserCommands(commands.Cog):
 			await ctx.message.reply("Doesn't look like there's anyone online at the moment, try again later")
 			return
 
-		embed = discord.Embed(colour=COLOUR)
-		val = ""
+		# Title
+		title = f"Players on server {srvName}"
+
+		# Truncate title if needed
+		if len(title) > 256: title = title[:253] + "..."
+		
+		# Body
+		body = ""
 		for player in plrs:
 			if player[1] == "": continue
 
-			val += "*%s*\n" % player[1]
+			body += f"*{player[1]}*\n"
 			if not isTheShip:
-				val += "Score: %d | Time on server: %s\n\n" % (player[2], formatTimedelta(timedelta(seconds=player[3])))
+				body += f"Score: {player[2]} | Time on server: {formatTimedelta(timedelta(seconds=player[3]))}\n\n"
 			else:
-				val += "Score: %d | Deaths: %d | Money: %d\n\n" % (player[2], player[4], player[5])
+				body += f"Score: {player[2]} | Deaths: {player[4]} | Money: {player[5]}\n\n"
+		
+		# Truncate body if needed (may be replaced with a page system in future)
+		if len(body) > 4096: body = body[:4093] + "..."
 
-		embed.add_field(name=f"Players on server {srvName}", value=val, inline=False)
-		await ctx.message.reply(embed=embed)
+		# Send
+		await ctx.message.reply(embed=discord.Embed(title=title, description=body, colour=COLOUR))
 
 	@commands.command()
 	async def rules(self, ctx, ruleName: str = None):

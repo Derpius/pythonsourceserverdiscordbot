@@ -607,7 +607,8 @@ class UserCommands(commands.Cog):
 	async def cog_check(self, ctx):
 		if str(ctx.channel.id) not in JSON: return False
 
-		if JSON[str(ctx.channel.id)]["server"].isClosed and ctx.command.name != "help":
+		prefixLen = len(self.bot.command_prefix)
+		if JSON[str(ctx.channel.id)]["server"].isClosed and ctx.message.content[prefixLen:(prefixLen + 5)] != "help ":
 			await ctx.message.reply("Server is closed, please try again later")
 			return False
 

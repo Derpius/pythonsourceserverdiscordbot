@@ -252,11 +252,10 @@ void HttpGETCallback(Handle request, bool failed, bool successful, EHTTPStatusCo
 
 void HandleHTTPResponse(const char[] body)
 {
-	if (StrEqual(body, "none")) return;
-
 	JSON_Object response = json_decode(body);
+	JSON_Object messages = view_as<JSON_Object>(response.GetObject("messages");)
 
-	JSON_Array chat = view_as<JSON_Array>(response.GetObject("chat"));
+	JSON_Array chat = view_as<JSON_Array>(messages.GetObject("chat"));
 	for (int i = 0; i < chat.Length; i++) {
 		JSON_Array msg = view_as<JSON_Array>(chat.GetObject(i));
 		char name[33]; // Discord names must be 1-32 chars, + null terminator
@@ -279,7 +278,7 @@ void HandleHTTPResponse(const char[] body)
 		else CPrintToChatAll("{purple}[Discord | %s] {default}%s: %s", role, name, msgTextClean);
 	}
 
-	JSON_Array rcon = view_as<JSON_Array>(response.GetObject("rcon"));
+	JSON_Array rcon = view_as<JSON_Array>(messages.GetObject("rcon"));
 	for (int i = 0; i < rcon.Length; i++) {
 		char cmd[4001];
 		rcon.GetString(i, cmd, 4001);

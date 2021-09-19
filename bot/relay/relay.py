@@ -66,17 +66,11 @@ class Handler(BaseHTTPRequestHandler):
 		self.send_header("Content-type", "application/json")
 		self.end_headers()
 
-		if len(discordMsgs[constring]["chat"]) == 0 and len(discordMsgs[constring]["rcon"]) == 0:
-			self.wfile.write(bytes(json.dumps({
-				"messages": "none",
-				"init-info-dirty": payloadDirty[constring]
-			}), encoding="utf-8"))
-		else:
-			self.wfile.write(bytes(json.dumps({
-				"messages": discordMsgs[constring],
-				"init-info-dirty": payloadDirty[constring]
-			}), encoding="utf-8"))	
-			discordMsgs[constring] = {"chat": [], "rcon": []}
+		self.wfile.write(bytes(json.dumps({
+			"messages": discordMsgs[constring],
+			"init-info-dirty": payloadDirty[constring]
+		}), encoding="utf-8"))	
+		discordMsgs[constring] = {"chat": [], "rcon": []}
 
 	def do_POST(self):
 		'''The "receiver" for source server chat'''

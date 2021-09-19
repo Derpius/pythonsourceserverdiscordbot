@@ -81,10 +81,11 @@ concommand.Add("startRelay", function(plr, cmd, args, argStr)
 				-- GET any available messages from relay server
 				HTTP({
 					success = function(statusCode, content, headers)
-						if statusCode != 200 or content == "none" then return end
+						if statusCode != 200 then return end
+
 						JSON = util.JSONToTable(content)
 
-						for _, msg in pairs(JSON.chat) do
+						for _, msg in pairs(JSON.messages.chat) do
 							print("[Discord | "..msg[4].."] " .. msg[1] .. ": " .. msg[2])
 							local colourHex = tonumber(msg[3], 16)
 							local colour = Color(bit.rshift(colourHex, 16), bit.band(bit.rshift(colourHex, 8), 0xff), bit.band(colourHex, 0xff))
@@ -100,8 +101,8 @@ concommand.Add("startRelay", function(plr, cmd, args, argStr)
 							end
 						end
 
-						for i = 1, #JSON.rcon do
-							game.ConsoleCommand(JSON.rcon[i].."\n")
+						for _, command in ipairs(JSON.messages.rcon) do
+							game.ConsoleCommand(command.."\n")
 						end
 					end,
 					method = "GET",

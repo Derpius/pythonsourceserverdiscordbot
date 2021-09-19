@@ -8,6 +8,9 @@ import requests
 import re
 import socket
 
+infoPayload = ""
+payloadDirty = {}
+
 discordMsgs = {}
 sourceMsgs = {}
 
@@ -47,7 +50,7 @@ class ThreadedHTTPServer(ThreadingMixIn, HTTPServer):
 
 class Handler(BaseHTTPRequestHandler):
 	def do_GET(self):
-		'''The "transmitter" for discord chat'''
+		'''The "transmitter" for discord chat (and any flags)'''
 		if "Source-Port" not in self.headers:
 			self.send_response(400)
 			self.end_headers()
@@ -64,10 +67,16 @@ class Handler(BaseHTTPRequestHandler):
 		self.end_headers()
 
 		if len(discordMsgs[constring]["chat"]) == 0 and len(discordMsgs[constring]["rcon"]) == 0:
-			self.wfile.write(b"none")
-			return
-		self.wfile.write(bytes(json.dumps(discordMsgs[constring]), encoding="utf-8"))	
-		discordMsgs[constring] = {"chat": [], "rcon": []}
+			self.wfile.write(bytes(json.dumps({
+				"messages": "none",
+				"init-info-dirty": payloadDirty[constring]
+			}), encoding="utf-8"))
+		else:
+			self.wfile.write(bytes(json.dumps({
+				"messages": discordMsgs[constring],
+				"init-info-dirty": payloadDirty[constring]
+			}), encoding="utf-8"))	
+			discordMsgs[constring] = {"chat": [], "rcon": []}
 
 	def do_POST(self):
 		'''The "receiver" for source server chat'''
@@ -119,6 +128,29 @@ class Handler(BaseHTTPRequestHandler):
 		self.send_response(200)
 		self.end_headers()
 		return
+	
+	def do_PATCH(self):
+		'''Request to get the info payload'''
+		if "Source-Port" not in self.headers:
+			self.send_response(400)
+			self.end_headers()
+			return
+
+		constring = f"{self.client_address[0] if self.client_address[0] != '127.0.0.1' else get_ip()}:{self.headers['Source-Port']}"
+		if constring not in sourceMsgs:
+			self.send_response(403)
+			self.end_headers()
+			return
+		
+		if not payloadDirty[constring]:
+			self.send_response(400)
+			self.end_headers()
+			return
+
+		self.send_response(200)
+		self.end_headers()
+
+		self.wfile.write(bytes(infoPayload, encoding="utf-8"))
 
 class Relay(object):
 	'''HTTP chat relay for source servers'''
@@ -128,13 +160,23 @@ class Relay(object):
 		self.t = Thread(target=relayThread, args=(port,))
 		self.t.daemon = True
 		self.t.start()
+	
+	def setInitPayload(payload: str):
+		'''Set the payload to be sent when a client performs an init request'''
+		global infoPayload
+		infoPayload = payload
+		
+		global payloadDirty
+		payloadDirty = payloadDirty.fromkeys(payloadDirty, True)
 
 	def addConStr(self, constring: str):
 		discordMsgs[constring] = {"chat": [], "rcon": []}
 		sourceMsgs[constring] = {"chat": [], "joins": [], "leaves": [], "deaths": [], "custom": []}
+		payloadDirty[constring] = True
 	def removeConStr(self, constring: str):
 		del discordMsgs[constring]
 		del sourceMsgs[constring]
+		del payloadDirty[constring]
 
 	def addMessage(self, msg: tuple, constring: str):
 		discordMsgs[constring]["chat"].append(msg)

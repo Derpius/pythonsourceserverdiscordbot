@@ -627,7 +627,12 @@ class UserCommands(commands.Cog):
 			await ctx.message.reply(f"Command missing required argument, see `{self.bot.command_prefix}help`")
 		else: raise error
 
-bot = commands.Bot(PREFIX, case_insensitive=True)
+# Set up intents
+intents = discord.Intents.default()
+intents.members = True
+
+# Initialise bot
+bot = commands.Bot(PREFIX, case_insensitive=True, intents=intents)
 bot.add_cog(ServerCommands(bot))
 bot.add_cog(UserCommands(bot))
 bot.run(TOKEN)

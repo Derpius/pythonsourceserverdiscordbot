@@ -8,7 +8,7 @@ import requests
 import re
 import socket
 
-infoPayload = ""
+infoPayloads = {}
 payloadDirty = {}
 
 discordMsgs = {}
@@ -150,7 +150,8 @@ class Handler(BaseHTTPRequestHandler):
 		self.send_response(200)
 		self.end_headers()
 
-		self.wfile.write(bytes(infoPayload, encoding="utf-8"))
+		self.wfile.write(bytes(infoPayloads[constring], encoding="utf-8"))
+		payloadDirty[constring] = False
 
 class Relay(object):
 	'''HTTP chat relay for source servers'''
@@ -161,21 +162,20 @@ class Relay(object):
 		self.t.daemon = True
 		self.t.start()
 	
-	def setInitPayload(payload: str):
+	def setInitPayload(self, constring: str, payload: str):
 		'''Set the payload to be sent when a client performs an init request'''
-		global infoPayload
-		infoPayload = payload
-		
-		global payloadDirty
-		payloadDirty = payloadDirty.fromkeys(payloadDirty, True)
+		infoPayloads[constring] = payload
+		payloadDirty[constring] = True
 
 	def addConStr(self, constring: str):
 		discordMsgs[constring] = {"chat": [], "rcon": []}
 		sourceMsgs[constring] = {"chat": [], "joins": [], "leaves": [], "deaths": [], "custom": []}
-		payloadDirty[constring] = True
+		infoPayloads[constring] = ""
+		payloadDirty[constring] = False
 	def removeConStr(self, constring: str):
 		del discordMsgs[constring]
 		del sourceMsgs[constring]
+		del infoPayloads[constring]
 		del payloadDirty[constring]
 
 	def addMessage(self, msg: tuple, constring: str):

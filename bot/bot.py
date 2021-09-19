@@ -137,7 +137,7 @@ class ServerCommands(commands.Cog):
 		channelID = str(ctx.channel.id)
 		if channelID not in JSON: await ctx.message.reply("This channel isn't connected to a server"); return
 
-		r.removeConStr(JSON[channelID]['server'].constr)
+		if JSON[channelID]["relay"] == 1: r.removeConStr(JSON[channelID]['server'].constr)
 		del JSON[channelID]
 		await ctx.message.reply("Connection removed successfully!")
 

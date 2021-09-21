@@ -45,7 +45,10 @@ class InfoPayload:
 		self.dirty = True
 
 		self.emotes = {}
-		for emote in emotes: self.emotes[str(emote.id)] = (emote.name, str(emote.url))
+		for emote in emotes: self.emotes[str(emote.id)] = {
+			"name": emote.name,
+			"url": str(emote.url)
+		}
 	
 	def encode(self) -> str:
 		if self.dirty:

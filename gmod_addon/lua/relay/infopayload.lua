@@ -1,17 +1,21 @@
 local members, roles, emotes = {}, {}, {}
+local relay_connection = GetConVar("relay_connection")
+local hostport = GetConVar("hostport")
 
 local string_format, string_find, string_lower, string_sub = string.format, string.find, string.lower, string.sub
 local _rawget, _setmetatable = rawget, setmetatable
 local _ipairs, _pairs = ipairs, pairs
 local _error = error
-local table_insert, table_sort = table.insert, table.sort
+local _tonumber = tonumber
+
+local table_insert, table_sort, table_concat = table.insert, table.sort, table.concat
 
 local util_JSONToTable, util_TableToJSON = util.JSONToTable, util.TableToJSON
 local util_Compress, util_Decompress = util.Compress, util.Decompress
 local util_CRC = util.CRC
 
 local net_Start, net_Receive = net.Start, net.Receive
-local net_WriteString, net_ReadString = net.WriteString, net.ReadString
+local net_WriteData, net_ReadData = net.WriteData, net.ReadData
 local net_WriteUInt, net_ReadUInt = net.WriteUInt, net.ReadUInt
 local net_Broadcast, net_SendToServer, net_Send = net.Broadcast, net.SendToServer, net.Send
 
@@ -22,6 +26,24 @@ local math_ceil = math.ceil
 /*
 	Netcode
 */
+local function decodePayload(payload)
+	members, roles, emotes = {}, {}, {}
+	for id, member in _pairs(payload.members) do
+		id = _tonumber(id)
+		members[id] = Member(id, member.username, member["display-name"], member.avatar, member.discriminator, member.roles)
+	end
+
+	for id, role in _pairs(payload.roles) do
+		id = _tonumber(id)
+		roles[id] = Role(id, role.name, Color(role.colour[1], role.colour[2], role.colour[3]))
+	end
+
+	for id, emote in _pairs(payload.emotes) do
+		id = _tonumber(id)
+		emotes[id] = Emote(id, emote.name, emote.url)
+	end
+end
+
 if SERVER then
 	local chunkSize = 32000
 
@@ -42,7 +64,7 @@ if SERVER then
 			// Send packet
 			net_Start("DiscordRelay.InfoPayload")
 			net_WriteUInt(id, 32)
-			net_WriteString(packet)
+			net_WriteData(packet)
 			if plr then
 				net_Send(plr)
 			else
@@ -62,10 +84,7 @@ if SERVER then
 				stream(util_Compress(content))
 
 				// Decode
-				local payload = util_JSONToTable(content)
-				members = payload.members
-				roles = payload.roles
-				emotes = payload.emotes
+				decodePayload(util_JSONToTable(content))
 			end,
 			method = "PATCH",
 			url = "http://"..relay_connection:GetString(),
@@ -84,27 +103,31 @@ if SERVER then
 else
 	local streamBuffer, streamLength, streamToReceive = {}, 0, 0
 	net_Receive("DiscordRelay.InfoPayloadHeader", function()
+		print("Header received")
 		streamBuffer = {}
 		streamLength = net_ReadUInt(32)
 		streamToReceive = streamLength
 	end)
 
-	net_Receive("DiscordRelay.InfoPayload", function()
+	net_Receive("DiscordRelay.InfoPayload", function(len)
+		print("Packet received")
 		if streamToReceive == 0 then return end // If this client isn't expecting a packet, drop it
+		print("Packet valid")
 
 		local id = net_ReadUInt(32)
-		local packet = util_Decompress(net_ReadString())
+		local packet = net_ReadData((len - 32) / 8)
 
-		streamBuffer[id] = payload
+		streamBuffer[id] = packet
 		streamToReceive = streamToReceive - 1
+
+		print(string.format("Buffered packet %i", id))
+		PrintTable(streamBuffer)
 
 		if streamToReceive == 0 then
 			local payload = table_concat(streamBuffer, "", 1, streamLength)
 			payload = util_JSONToTable(util_Decompress(payload))
 
-			members = payload.members
-			roles = payload.roles
-			emotes = payload.emotes
+			decodePayload(payload)
 		end
 	end)
 

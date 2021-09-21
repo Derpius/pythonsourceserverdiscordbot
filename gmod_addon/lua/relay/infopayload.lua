@@ -1,5 +1,5 @@
 local members, roles, emotes = {}, {}, {}
-local relay_connection = GetConVar("relay_connection")
+local relay_connection = DiscordRelay.RelayConnection
 local hostport = GetConVar("hostport")
 
 local string_format, string_find, string_lower, string_sub = string.format, string.find, string.lower, string.sub
@@ -87,7 +87,7 @@ if SERVER then
 				decodePayload(util_JSONToTable(content))
 			end,
 			method = "PATCH",
-			url = "http://"..relay_connection:GetString(),
+			url = "http://" .. relay_connection:GetString(),
 			headers = {["Source-Port"] = hostport:GetString()}
 		})
 	end

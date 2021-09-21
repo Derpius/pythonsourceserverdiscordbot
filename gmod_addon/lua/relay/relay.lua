@@ -1,5 +1,5 @@
 local sv_hibernate_think = GetConVar("sv_hibernate_think")
-local relay_connection, relay_interval = GetConVar("relay_connection"), GetConVar("relay_interval")
+local relay_connection, relay_interval = DiscordRelay.RelayConnection, DiscordRelay.RelayInterval
 local hostport = GetConVar("hostport")
 
 local toggle = false

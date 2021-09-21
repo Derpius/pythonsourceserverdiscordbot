@@ -8,7 +8,7 @@ local table_insert, table_sort = table.insert, table.sort
 local function sortedFind(tbl, match)
 	// Get matches
 	local matches = {}
-	for k, v in _pairs(tbl) do
+	for _, v in _pairs(tbl) do
 		local weight = match(v)
 		if weight then table_insert(matches, {weight, v}) end
 	end

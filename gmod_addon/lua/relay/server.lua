@@ -36,7 +36,7 @@ local function onChat(plr, msg, teamCht)
 	})
 end
 
-concommand.Add("startRelay", function(plr, cmd, args, argStr)
+concommand.Add("relay_start", function(plr, cmd, args, argStr)
 	if not plr:IsPlayer() and not toggle then
 		toggle = true
 
@@ -125,7 +125,7 @@ concommand.Add("startRelay", function(plr, cmd, args, argStr)
 		DiscordRelay.UpdateInfo()
 	end
 end)
-concommand.Add("stopRelay", function(plr, cmd, args, argStr)
+concommand.Add("relay_stop", function(plr, cmd, args, argStr)
 	if not plr:IsPlayer() and toggle then
 		toggle = false
 

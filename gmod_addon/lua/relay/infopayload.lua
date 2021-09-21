@@ -72,49 +72,48 @@ local findEmotesByName = DiscordRelay.FindEmotesByName
 	Types
 */
 // Member
-local memberMeta = {
-	__tostring = function(self)
-		local roles = self:GetRoles()
-		return string_format(
-			"[%s] %s (%s#%s)",
-			roles[#roles],
-			self:GetDisplayName(),
-			self:GetUsername(),
-			self:GetDiscriminator()
-		)
-	end,
-	GetId = function(self)
-		return _rawget(self, "_id")
+local memberMeta = {}
+function memberMeta:__tostring()
+	local roles = self:GetRoles()
+	return string_format(
+		"[%s] %s (%s#%s)",
+		roles[#roles],
+		self:GetDisplayName(),
+		self:GetUsername(),
+		self:GetDiscriminator()
+	)
+end
+function memberMeta:GetId()
+	return _rawget(self, "_id")
+end
+function memberMeta:GetDisplayName()
+	return _rawget(self, "_displayName")
+end
+function memberMeta:GetUsername()
+	return _rawget(self, "_username")
+end
+function memberMeta:GetAvatar()
+	return _rawget(self, "_avatar")
+end
+function memberMeta:GetDiscriminator()
+	return _rawget(self, "_discrim")
+end
+function memberMeta:GetTag()
+	return string_format("%s#%s", self:GetUsername(), self:GetDiscriminator())
+end
+function memberMeta:GetRoles()
+	local roles = {}
+	for i, id in _ipairs(_rawget(self, "_roles")) do
+		local role = getRole(id)
+		if not role then _error(string_format("Member %i has invalid roles", self:GetId())) end
+		roles[i] = role
 	end
-	GetDisplayName = function(self)
-		return _rawget(self, "_displayName")
-	end,
-	GetUsername = function(self)
-		return _rawget(self, "_username")
-	end,
-	GetAvatar = function(self)
-		return _rawget(self, "_avatar")
-	end,
-	GetDiscriminator = function(self)
-		return _rawget(self, "_discrim")
-	end,
-	GetTag = function(self)
-		return string_format("%s#%s", self:GetUsername(), self:GetDiscriminator())
-	end
-	GetRoles = function(self)
-		local roles = {}
-		for i, id in _ipairs(_rawget(self, "_roles")) do
-			local role = getRole(id)
-			if not role then _error(string_format("Member %i has invalid roles", self:GetId())) end
-			roles[i] = role
-		end
-		return roles
-	end,
-	HasRole = function(self, id)
-		if _rawget(self, "_roles")[id] then return true end
-		return false
-	end
-}
+	return roles
+end
+function memberMeta:HasRole(id)
+	if _rawget(self, "_roles")[id] then return true end
+	return false
+end
 memberMeta.__index = memberMeta
 
 function DiscordRelay.Member(id, username, displayName, avatarUrl, discriminator, roles)
@@ -136,23 +135,22 @@ end
 local Member = DiscordRelay.Member
 
 // Role
-local roleMeta = {
-	__tostring = function(self)
-		return self:GetName()
-	end,
-	GetId = function(self)
-		return _rawget(self, "_id")
-	end
-	GetName = function(self)
-		return _rawget(self, "_name")
-	end,
-	GetColour = function(self)
-		return _rawget(self, "_colour")
-	end,
-	GetColor = function(self)
-		return self:GetColour()
-	end
-}
+local roleMeta = {}
+function roleMeta:__tostring()
+	return self:GetName()
+end
+function roleMeta:GetId()
+	return _rawget(self, "_id")
+end
+function roleMeta:GetName()
+	return _rawget(self, "_name")
+end
+function roleMeta:GetColour()
+	return _rawget(self, "_colour")
+end
+function roleMeta:GetColor()
+	return self:GetColour()
+end
 roleMeta.__index = roleMeta
 
 function DiscordRelay.Role(id, name, colour)
@@ -168,20 +166,19 @@ end
 local Role = DiscordRelay.Role
 
 // Emote
-local emoteMeta = {
-	__tostring = function(self)
-		return string_format("<:%s:%i>", self:GetName(), self:GetId())
-	end,
-	GetId = function(self)
-		return _rawget(self, "_id")
-	end
-	GetName = function(self)
-		return _rawget(self, "_name")
-	end,
-	GetUrl = function(self)
-		return _rawget(self, "_url")
-	end
-}
+local emoteMeta = {}
+function emoteMeta:__tostring()
+	return string_format("<:%s:%i>", self:GetName(), self:GetId())
+end
+function emoteMeta:GetId()
+	return _rawget(self, "_id")
+end
+function emoteMeta:GetName()
+	return _rawget(self, "_name")
+end
+function emoteMeta:GetUrl()
+	return _rawget(self, "_url")
+end
 emoteMeta.__index = emoteMeta
 
 function DiscordRelay.Emote(id, name, url)

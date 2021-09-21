@@ -44,6 +44,19 @@ class ServerCommands(commands.Cog):
 		self.pingServer.start()
 		self.getFromRelay.start()
 	
+	def getGuildInfo(self, guild: discord.Guild) -> InfoPayload:
+		'''Get the appropriate InfoPayload for this context, or create one if none exists'''
+		if guild.id not in self.infoPayloads:
+			# Create an info payload for this guild if none exists
+			payload = InfoPayload()
+			
+			payload.setRoles(guild.roles)
+			payload.setEmotes(guild.emojis)
+			for member in guild.members: payload.updateMember(member)
+
+			self.infoPayloads[guild.id] = payload
+		return self.infoPayloads[guild.id]
+	
 	@commands.Cog.listener()
 	async def on_ready(self):
 		await self.bot.wait_until_ready()
@@ -115,6 +128,10 @@ class ServerCommands(commands.Cog):
 		if channelID not in self.json: return
 		if self.json[channelID]["server"].isClosed: await ctx.message.reply("Server is already closed"); return
 
+		if self.json[channelID]["relay"] == 1:
+			constr = self.json[channelID]["server"].constr
+			self.relay.removeConStr(constr)
+
 		self.json[channelID]["server"].close()
 		await ctx.message.reply(f"Server closed successfully!\nReconnect with `{self.bot.command_prefix}retry`")
 
@@ -126,11 +143,21 @@ class ServerCommands(commands.Cog):
 		if not self.json[channelID]["server"].isClosed: await ctx.message.reply("Server is already connected"); return
 		serverCon = self.json[channelID]
 
+		wasRelaying = serverCon["relay"] # Cache the relay state (cause we need to disable it before retrying and awaiting so the get messages task wont try to get data before it's ready)
 		serverCon["server"].retry()
-		if serverCon["server"].isClosed: await ctx.message.reply("Failed to reconnect to server")
+		if serverCon["server"].isClosed:
+			serverCon["relay"] = wasRelaying
+			await ctx.message.reply("Failed to reconnect to server")
 		else:
 			self.json[channelID]["time_since_down"] = -1
 			await ctx.message.reply("Successfully reconnected to server!")
+
+			serverCon["relay"] = wasRelaying
+			if self.json[channelID]["relay"] == 1:
+				constr = self.json[channelID]["server"].constr
+				self.relay.addConStr(constr)
+				payload = self.getGuildInfo(ctx.guild)
+				self.relay.setInitPayload(constr, payload.encode())
 
 			if channelID in self.autoclosed:
 				# Create a list of all valid user IDs
@@ -167,17 +194,7 @@ class ServerCommands(commands.Cog):
 		constr = serverCon["server"].constr
 		self.relay.addConStr(constr)
 
-		payload: InfoPayload = None
-		if ctx.guild.id not in self.infoPayloads:
-			# Create an info payload for this guild if none exists
-			payload = InfoPayload()
-			
-			payload.setRoles(ctx.guild.roles)
-			payload.setEmotes(ctx.guild.emojis)
-			for member in ctx.guild.members: payload.updateMember(member)
-
-			self.infoPayloads[ctx.guild.id] = payload
-		else: payload = self.infoPayloads[ctx.guild.id]
+		payload = self.getGuildInfo(ctx.guild)
 		self.relay.setInitPayload(constr, payload.encode())
 		
 		await ctx.message.reply("Relay set successfully!")
@@ -250,6 +267,7 @@ class ServerCommands(commands.Cog):
 				# Attempt to retry the connection to the server
 				serverCon["server"].retry()
 				if not serverCon["server"].isClosed:
+					guild = self.bot.get_channel(int(channelID)).guild
 					self.json[channelID]["time_since_down"] = -1
 
 					# Create a list of all valid user IDs
@@ -258,15 +276,21 @@ class ServerCommands(commands.Cog):
 
 					# For every person set to be notified, send them a DM to say the server is back online
 					for personToNotify in serverCon["toNotify"]:
-						member = await self.bot.get_channel(int(channelID)).guild.fetch_member(personToNotify)
+						member = await guild.fetch_member(personToNotify)
 						if member is None: continue
 
 						validIDs.append(personToNotify)
 
-						guildName = self.bot.get_channel(int(channelID)).guild.name
+						guildName = guild.name
 						await member.send(f'''
 						The Source Dedicated Server `{serverCon["server"]._info["name"] if serverCon["server"]._info != {} else "unknown"}` @ `{serverCon["server"].constr}` assigned to this bot just came back up!\n*You are receiving this message as you are set to be notified regarding server outage at `{guildName}`*
 						''')
+					
+					if serverCon["relay"] == 1:
+						constr = serverCon["server"].constr
+						self.relay.addConStr(constr)
+						payload = self.getGuildInfo(guild)
+						self.relay.setInitPayload(constr, payload.encode())
 
 					self.json[channelID]["toNotify"] = validIDs
 					self.autoclosed.remove(channelID)
@@ -292,7 +316,11 @@ class ServerCommands(commands.Cog):
 					''')
 
 				self.json[channelID]["toNotify"] = validIDs
+
 				serverCon["server"].close()
+				if serverCon["relay"] == 1:
+					self.relay.removeConStr(serverCon["server"].constr)
+
 				self.autoclosed.add(channelID)
 			else:
 				if self.json[channelID]["time_since_down"] != -1: self.json[channelID]["time_since_down"] = -1

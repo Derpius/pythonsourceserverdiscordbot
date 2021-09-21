@@ -135,11 +135,6 @@ class Handler(BaseHTTPRequestHandler):
 			self.send_response(403)
 			self.end_headers()
 			return
-		
-		if not payloadDirty[constring]:
-			self.send_response(400)
-			self.end_headers()
-			return
 
 		self.send_response(200)
 		self.end_headers()

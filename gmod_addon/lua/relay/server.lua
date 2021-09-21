@@ -143,6 +143,7 @@ concommand.Add("startRelay", function(plr, cmd, args, argStr)
 			type = "application/json",
 			headers = {["Source-Port"] = hostport:GetString()}
 		})
+		DiscordRelay.UpdateInfo()
 	end
 end)
 concommand.Add("stopRelay", function(plr, cmd, args, argStr)

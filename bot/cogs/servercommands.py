@@ -202,7 +202,8 @@ class ServerCommands(commands.Cog):
 		if serverCon["relay"] == 0: await ctx.message.reply("The relay is already disabled"); return
 
 		serverCon["relay"] = 0
-		self.removeConStr(ctx.guild, serverCon['server'].constr)
+
+		if not serverCon["server"].isClosed: self.removeConStr(ctx.guild, serverCon["server"].constr)
 
 		await ctx.message.reply(f"Relay disabled, use `{self.bot.command_prefix}enableRelay` to re-enable")
 	

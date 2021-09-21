@@ -1,3 +1,6 @@
+DiscordRelay = {}
+include("relay/infopayload.lua")
+
 if SERVER then
 	print("##########################")
 	print("| HTTP Chat Relay Server |")
@@ -5,11 +8,12 @@ if SERVER then
 
 	util.AddNetworkString("DiscordRelay.NetworkMsg")
 	util.AddNetworkString("DiscordRelay.DSay")
-	DiscordRelay = {}
+	util.AddNetworkString("DiscordRelay.InfoPayload")
 
 	include("params.lua")
 	include("relay/relay.lua")
 	AddCSLuaFile("relay/client.lua")
+	AddCSLuaFile("relay/infopayload.lua")
 end
 
 if CLIENT then

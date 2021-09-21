@@ -26,51 +26,6 @@ function DiscordRelay.CachePost(body)
 end
 local cachePost = DiscordRelay.CachePost
 
-/*
-	InfoPayload funcs
-*/
-// Members
-// Get the entire member table
-function DiscordRelay.GetMembers()
-	return {}
-end
-local getMembers = DiscordRelay.GetMembers
-
-// Get a member by id
-function DiscordRelay.GetMember(id)
-	return nil
-end
-local getMember = DiscordRelay.GetMember
-
-// Get a list of members who match the given name
-function DiscordRelay.FindMembersByName(name, caseSensitive)
-	if caseSensitive == nil then caseSensitive = false end
-
-	return {}
-end
-local findMembersByName = DiscordRelay.FindMembersByName
-
-// Roles
-// Get the entire roles table
-function DiscordRelay.GetRoles()
-	return {}
-end
-local getRoles = DiscordRelay.GetRoles
-
-// Get a role by id
-function DiscordRelay.GetRole(id)
-	return nil
-end
-local getRole = DiscordRelay.GetRole
-
-// Get a list of roles that match the given name
-function DiscordRelay.FindRolesByName(name, caseSensitive)
-	if caseSensitive == nil then caseSensitive = false end
-
-	return {}
-end
-local findRolesByName = DiscordRelay.FindRolesByName
-
 // Emotes
 // Get the entire emote table
 function DiscordRelay.GetEmotes()

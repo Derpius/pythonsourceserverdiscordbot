@@ -441,4 +441,4 @@ class ServerCommands(commands.Cog):
 	@commands.Cog.listener()
 	async def on_guild_emojis_update(self, guild: discord.Guild, _: Sequence[discord.Emoji], after: Sequence[discord.Emoji]):
 		self.infoPayloads[guild.id].setEmotes(after)
-		self.updatePayloadConStrs(self.infoPayloads[after.guild.id])
+		self.updatePayloadConStrs(self.infoPayloads[guild.id])

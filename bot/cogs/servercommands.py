@@ -40,6 +40,8 @@ class ServerCommands(commands.Cog):
 
 		self.infoPayloads: Dict[int, InfoPayload] = {}
 
+		self.lastAuthor = ["", 0]
+
 		self.pingServer.start()
 		self.getFromRelay.start()
 	
@@ -322,7 +324,6 @@ class ServerCommands(commands.Cog):
 	@tasks.loop(seconds=0.1)
 	async def getFromRelay(self):
 		await self.bot.wait_until_ready()
-		global lastAuthor
 
 		for channelID in self.json.keys():
 			channelIDInt = int(channelID)
@@ -336,18 +337,18 @@ class ServerCommands(commands.Cog):
 				lastMsg = (await self.bot.get_channel(channelIDInt).history(limit=1).flatten())[0]
 
 				if (
-					author[0] != lastAuthor[0] or
+					author[0] != self.lastAuthor[0] or
 					lastMsg.author.id != self.bot.user.id or
 					len(lastMsg.embeds) == 0 or
 					lastMsg.embeds[0].author.name != author[2] or
-					author[1] - lastAuthor[1] > 420 or
+					author[1] - self.lastAuthor[1] > 420 or
 					lastMsg.embeds[0].description == discord.Embed.Empty or
 					len(lastMsg.embeds[0].description) + len(msg["message"]) > 4096
 				):
 					embed = discord.Embed(description=msg["message"], colour=discord.Colour.from_rgb(*[int(val) for val in msg["teamColour"].split(",")]))
 					embed.set_author(name=author[2], icon_url=msg["icon"])
 					lastMsg = await self.bot.get_channel(channelIDInt).send(embed=embed)
-					lastAuthor = author
+					self.lastAuthor = author
 				else:
 					embed = discord.Embed(description=lastMsg.embeds[0].description + "\n" + msg["message"], colour=discord.Colour.from_rgb(*[int(val) for val in msg["teamColour"].split(",")]))
 					embed.set_author(name=author[2], icon_url=msg["icon"])

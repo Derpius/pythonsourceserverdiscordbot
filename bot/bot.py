@@ -22,7 +22,6 @@ COLOUR = int(os.getenv("COLOUR"), 16)
 PORT = int(os.getenv("RELAY_PORT"))
 
 # Init relay http server
-lastAuthor = ["", 0]
 r = Relay(PORT)
 
 # Load data from json

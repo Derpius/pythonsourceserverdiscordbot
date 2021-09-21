@@ -1,18 +1,118 @@
 local members, roles, emotes = {}, {}, {}
 
-local string_format, string_find, string_lower = string.format, string.find, string.lower
+local string_format, string_find, string_lower, string_sub = string.format, string.find, string.lower, string.sub
 local _rawget, _setmetatable = rawget, setmetatable
 local _ipairs, _pairs = ipairs, pairs
 local _error = error
 local table_insert, table_sort = table.insert, table.sort
 
+local util_JSONToTable, util_TableToJSON = util.JSONToTable, util.TableToJSON
+local util_Compress, util_Decompress = util.Compress, util.Decompress
+local util_CRC = util.CRC
+
+local net_Start, net_Receive = net.Start, net.Receive
+local net_WriteString, net_ReadString = net.WriteString, net.ReadString
+local net_WriteUInt, net_ReadUInt = net.WriteUInt, net.ReadUInt
+local net_Broadcast, net_SendToServer, net_Send = net.Broadcast, net.SendToServer, net.Send
+
+local _HTTP = HTTP
+
+local math_ceil = math.ceil
+
 /*
 	Netcode
 */
 if SERVER then
+	local chunkSize = 32000
 
+	local function stream(data, plr)
+		// Send header
+		net_Start("DiscordRelay.InfoPayloadHeader")
+		net_WriteUInt(math_ceil(#data / chunkSize), 32)
+		if plr then
+			net_Send(plr)
+		else
+			net_Broadcast()
+		end
+
+		local id = 1
+		for i = 1, #data, chunkSize do
+			local packet = string_sub(data, i, i + chunkSize - 1)
+
+			// Send packet
+			net_Start("DiscordRelay.InfoPayload")
+			net_WriteUInt(id, 32)
+			net_WriteString(packet)
+			if plr then
+				net_Send(plr)
+			else
+				net_Broadcast()
+			end
+
+			id = id + 1
+		end
+	end
+
+	function DiscordRelay.UpdateInfo()
+		_HTTP({
+			success = function(statusCode, content, headers)
+				if statusCode != 200 then return end
+
+				// Stream payload to clients
+				stream(util_Compress(content))
+
+				// Decode
+				local payload = util_JSONToTable(content)
+				members = payload.members
+				roles = payload.roles
+				emotes = payload.emotes
+			end,
+			method = "PATCH",
+			url = "http://"..relay_connection:GetString(),
+			headers = {["Source-Port"] = hostport:GetString()}
+		})
+	end
+
+	// Clients will send this whenever they init to request the server's data
+	net_Receive("DiscordRelay.InfoPayload", function(len, plr)
+		stream(util_Compress(util_TableToJSON({
+			members = members,
+			roles = roles,
+			emotes = emotes
+		})), plr)
+	end)
 else
+	local streamBuffer, streamLength, streamToReceive = {}, 0, 0
+	net_Receive("DiscordRelay.InfoPayloadHeader", function()
+		streamBuffer = {}
+		streamLength = net_ReadUInt(32)
+		streamToReceive = streamLength
+	end)
 
+	net_Receive("DiscordRelay.InfoPayload", function()
+		if streamToReceive == 0 then return end // If this client isn't expecting a packet, drop it
+
+		local id = net_ReadUInt(32)
+		local packet = util_Decompress(net_ReadString())
+
+		streamBuffer[id] = payload
+		streamToReceive = streamToReceive - 1
+
+		if streamToReceive == 0 then
+			local payload = table_concat(streamBuffer, "", 1, streamLength)
+			payload = util_JSONToTable(util_Decompress(payload))
+
+			members = payload.members
+			roles = payload.roles
+			emotes = payload.emotes
+		end
+	end)
+
+	// Let the server know we're a new client and should be given a copy of the info payload
+	hook.Add("InitPostEntity", "DiscordRelay.InfoPayloadClientInit", function()
+		net_Start("DiscordRelay.InfoPayload")
+		net_SendToServer()
+	end)
 end
 
 /*

@@ -8,7 +8,9 @@ if SERVER then
 
 	util.AddNetworkString("DiscordRelay.NetworkMsg")
 	util.AddNetworkString("DiscordRelay.DSay")
+
 	util.AddNetworkString("DiscordRelay.InfoPayload")
+	util.AddNetworkString("DiscordRelay.InfoPayloadHeader")
 
 	include("params.lua")
 	include("relay/relay.lua")

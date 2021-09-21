@@ -106,6 +106,8 @@ concommand.Add("startRelay", function(plr, cmd, args, argStr)
 
 						JSON = util.JSONToTable(content)
 
+						if JSON["init-info-dirty"] then DiscordRelay.UpdateInfo() end
+
 						for _, msg in pairs(JSON.messages.chat) do
 							print("[Discord | "..msg[4].."] " .. msg[1] .. ": " .. msg[2])
 							local colourHex = tonumber(msg[3], 16)

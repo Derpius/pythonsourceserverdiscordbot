@@ -20,7 +20,7 @@ local math_ceil = math.ceil
 
 local apiRefTbl = include("api.lua")
 local Member, Role, Emote = include("types.lua")
-local json = include("json.lua/json.lua")
+local json = include("relay/json.lua/json.lua")
 
 /*
 	Netcode

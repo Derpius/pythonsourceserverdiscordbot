@@ -24,6 +24,8 @@ if SERVER then
 
 	include("relay/server.lua")
 	AddCSLuaFile("relay/client.lua")
+
+	AddCSLuaFile("relay/json.lua/json.lua")
 	AddCSLuaFile("relay/infopayload/main.lua")
 	AddCSLuaFile("relay/infopayload/types.lua")
 	AddCSLuaFile("relay/infopayload/api.lua")

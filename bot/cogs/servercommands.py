@@ -6,7 +6,7 @@ import discord
 from discord import message
 from discord.ext import commands, tasks
 
-from relay.relay import Relay
+from relay import Relay
 
 from sourceserver.sourceserver import SourceServer
 from sourceserver.exceptions import SourceError
@@ -143,21 +143,17 @@ class ServerCommands(commands.Cog):
 		if not self.json[channelID]["server"].isClosed: await ctx.message.reply("Server is already connected"); return
 		serverCon = self.json[channelID]
 
-		wasRelaying = serverCon["relay"] # Cache the relay state (cause we need to disable it before retrying and awaiting so the get messages task wont try to get data before it's ready)
 		serverCon["server"].retry()
-		if serverCon["server"].isClosed:
-			serverCon["relay"] = wasRelaying
-			await ctx.message.reply("Failed to reconnect to server")
+		if serverCon["server"].isClosed: await ctx.message.reply("Failed to reconnect to server")
 		else:
-			self.json[channelID]["time_since_down"] = -1
-			await ctx.message.reply("Successfully reconnected to server!")
-
-			serverCon["relay"] = wasRelaying
-			if self.json[channelID]["relay"] == 1:
+			if serverCon["relay"] == 1:
 				constr = self.json[channelID]["server"].constr
 				self.relay.addConStr(constr)
 				payload = self.getGuildInfo(ctx.guild)
 				self.relay.setInitPayload(constr, payload.encode())
+			
+			self.json[channelID]["time_since_down"] = -1
+			await ctx.message.reply("Successfully reconnected to server!")
 
 			if channelID in self.autoclosed:
 				# Create a list of all valid user IDs
@@ -268,6 +264,13 @@ class ServerCommands(commands.Cog):
 				serverCon["server"].retry()
 				if not serverCon["server"].isClosed:
 					guild = self.bot.get_channel(int(channelID)).guild
+
+					if serverCon["relay"] == 1:
+						constr = serverCon["server"].constr
+						self.relay.addConStr(constr)
+						payload = self.getGuildInfo(guild)
+						self.relay.setInitPayload(constr, payload.encode())
+
 					self.json[channelID]["time_since_down"] = -1
 
 					# Create a list of all valid user IDs
@@ -285,12 +288,6 @@ class ServerCommands(commands.Cog):
 						await member.send(f'''
 						The Source Dedicated Server `{serverCon["server"]._info["name"] if serverCon["server"]._info != {} else "unknown"}` @ `{serverCon["server"].constr}` assigned to this bot just came back up!\n*You are receiving this message as you are set to be notified regarding server outage at `{guildName}`*
 						''')
-					
-					if serverCon["relay"] == 1:
-						constr = serverCon["server"].constr
-						self.relay.addConStr(constr)
-						payload = self.getGuildInfo(guild)
-						self.relay.setInitPayload(constr, payload.encode())
 
 					self.json[channelID]["toNotify"] = validIDs
 					self.autoclosed.remove(channelID)

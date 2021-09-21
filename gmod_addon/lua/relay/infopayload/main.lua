@@ -7,7 +7,6 @@ local _pairs = pairs
 
 local table_concat = table.concat
 
-local util_JSONToTable, util_TableToJSON = util.JSONToTable, util.TableToJSON
 local util_Compress, util_Decompress = util.Compress, util.Decompress
 
 local net_Start, net_Receive = net.Start, net.Receive
@@ -21,6 +20,7 @@ local math_ceil = math.ceil
 
 local apiRefTbl = include("api.lua")
 local Member, Role, Emote = include("types.lua")
+local json = include("json.lua/json.lua")
 
 /*
 	Netcode
@@ -87,7 +87,7 @@ if SERVER then
 				stream(rawPayload)
 
 				// Decode
-				decodePayload(util_JSONToTable(content))
+				decodePayload(json.decode(content))
 			end,
 			method = "PATCH",
 			url = "http://" .. relay_connection:GetString(),
@@ -118,7 +118,7 @@ else
 
 		if streamToReceive == 0 then
 			local payload = table_concat(streamBuffer, "", 1, streamLength)
-			payload = util_JSONToTable(util_Decompress(payload))
+			payload = json.decode(util_Decompress(payload))
 
 			decodePayload(payload)
 		end

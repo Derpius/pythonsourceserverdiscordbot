@@ -8,10 +8,10 @@ from discord.ext import commands
 
 from sourceserver.sourceserver import SourceServer
 
-from relay.relay import Relay
+from relay import Relay
 
-from servercommands import ServerCommands
-from usercommands import UserCommands
+from cogs.servercommands import ServerCommands
+from cogs.usercommands import UserCommands
 
 # Initialise variables from local storage
 load_dotenv()

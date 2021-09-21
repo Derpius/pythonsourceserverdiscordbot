@@ -1,0 +1,3 @@
+[submodule "gmod_addon/lua/relay/json.lua"]
+	path = gmod_addon/lua/relay/json.lua
+	url = https://github.com/rxi/json.lua.git

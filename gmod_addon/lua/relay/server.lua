@@ -26,27 +26,6 @@ function DiscordRelay.CachePost(body)
 end
 local cachePost = DiscordRelay.CachePost
 
-// Emotes
-// Get the entire emote table
-function DiscordRelay.GetEmotes()
-	return {}
-end
-local getEmotes = DiscordRelay.GetEmotes
-
-// Get an emote by id
-function DiscordRelay.GetEmote(id)
-	return nil
-end
-local getEmote = DiscordRelay.GetEmote
-
-// Get a list of emotes that match the given name
-function DiscordRelay.FindEmotesByName(name, caseSensitive)
-	if caseSensitive == nil then caseSensitive = false end
-
-	return {}
-end
-local findEmotesByName = DiscordRelay.FindEmotesByName
-
 local function onChat(plr, msg, teamCht)
 	local teamColour = team.GetColor(plr:Team())
 	cachePost({

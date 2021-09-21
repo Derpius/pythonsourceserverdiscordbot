@@ -3,7 +3,6 @@ import random
 import time
 
 import discord
-from discord import message
 from discord.ext import commands, tasks
 
 from relay import Relay
@@ -13,7 +12,7 @@ from sourceserver.exceptions import SourceError
 
 import re
 
-from typing import Dict
+from typing import Dict, Sequence
 
 urlPattern = re.compile(
 	r'^(?:http|ftp)s?://' # http:// or https://
@@ -52,10 +51,23 @@ class ServerCommands(commands.Cog):
 			
 			payload.setRoles(guild.roles)
 			payload.setEmotes(guild.emojis)
-			for member in guild.members: payload.updateMember(member)
+			payload.setMembers(guild.members)
 
 			self.infoPayloads[guild.id] = payload
 		return self.infoPayloads[guild.id]
+	
+	def setupConStr(self, guild: discord.Guild, constr: str):
+		'''Perform initialisation for a new relaying constring'''
+		self.relay.addConStr(constr)
+		payload = self.getGuildInfo(guild)
+		payload.addConStr(constr)
+		self.relay.setInitPayload(constr, payload.encode())
+	
+	def removeConStr(self, guild: discord.Guild, constr: str):
+		'''Perform deinitialisation of a relaying constring'''
+		self.relay.removeConStr(constr)
+		if guild.id in self.infoPayloads:
+			self.infoPayloads[guild.id].removeConStr(constr)
 	
 	@commands.Cog.listener()
 	async def on_ready(self):
@@ -68,16 +80,7 @@ class ServerCommands(commands.Cog):
 			if channel is None: continue
 			if isinstance(channel, discord.abc.PrivateChannel): raise TypeError("This bot does not support private channels (DMs and group chats)")
 
-			# Make sure !enableRelay wasn't run already in case on_ready takes a while to be called for some reason
-			if channel.guild.id in self.infoPayloads: continue
-
-			payload = InfoPayload()
-			payload.setRoles(channel.guild.roles)
-			payload.setEmotes(channel.guild.emojis)
-			for member in channel.guild.members: payload.updateMember(member)
-
-			self.infoPayloads[channel.guild.id] = payload
-			self.relay.setInitPayload(serverObj["server"].constr, payload.encode())
+			self.setupConStr(channel.guild, serverObj["server"].constr)
 
 	async def cog_check(self, ctx: commands.Context):
 		'''Make sure the person using these commands has manage guild permissions'''
@@ -117,7 +120,9 @@ class ServerCommands(commands.Cog):
 		channelID = str(ctx.channel.id)
 		if channelID not in self.json: await ctx.message.reply("This channel isn't connected to a server"); return
 
-		if self.json[channelID]["relay"] == 1: self.relay.removeConStr(self.json[channelID]['server'].constr)
+		if self.json[channelID]["relay"] == 1:
+			self.removeConStr(ctx.guild, self.json[channelID]['server'].constr)
+
 		del self.json[channelID]
 		await ctx.message.reply("Connection removed successfully!")
 
@@ -129,8 +134,7 @@ class ServerCommands(commands.Cog):
 		if self.json[channelID]["server"].isClosed: await ctx.message.reply("Server is already closed"); return
 
 		if self.json[channelID]["relay"] == 1:
-			constr = self.json[channelID]["server"].constr
-			self.relay.removeConStr(constr)
+			self.removeConStr(ctx.guild, self.json[channelID]['server'].constr)
 
 		self.json[channelID]["server"].close()
 		await ctx.message.reply(f"Server closed successfully!\nReconnect with `{self.bot.command_prefix}retry`")
@@ -147,10 +151,7 @@ class ServerCommands(commands.Cog):
 		if serverCon["server"].isClosed: await ctx.message.reply("Failed to reconnect to server")
 		else:
 			if serverCon["relay"] == 1:
-				constr = self.json[channelID]["server"].constr
-				self.relay.addConStr(constr)
-				payload = self.getGuildInfo(ctx.guild)
-				self.relay.setInitPayload(constr, payload.encode())
+				self.setupConStr(ctx.guild, self.json[channelID]["server"].constr)
 			
 			self.json[channelID]["time_since_down"] = -1
 			await ctx.message.reply("Successfully reconnected to server!")
@@ -187,11 +188,7 @@ class ServerCommands(commands.Cog):
 		serverCon["relay"] = 1
 
 		# Init on relay server
-		constr = serverCon["server"].constr
-		self.relay.addConStr(constr)
-
-		payload = self.getGuildInfo(ctx.guild)
-		self.relay.setInitPayload(constr, payload.encode())
+		self.setupConStr(ctx.guild, serverCon["server"].constr)
 		
 		await ctx.message.reply("Relay set successfully!")
 
@@ -205,7 +202,7 @@ class ServerCommands(commands.Cog):
 		if serverCon["relay"] == 0: await ctx.message.reply("The relay is already disabled"); return
 
 		serverCon["relay"] = 0
-		self.relay.removeConStr(serverCon["server"].constr)
+		self.removeConStr(ctx.guild, serverCon['server'].constr)
 
 		await ctx.message.reply(f"Relay disabled, use `{self.bot.command_prefix}enableRelay` to re-enable")
 	
@@ -266,10 +263,7 @@ class ServerCommands(commands.Cog):
 					guild = self.bot.get_channel(int(channelID)).guild
 
 					if serverCon["relay"] == 1:
-						constr = serverCon["server"].constr
-						self.relay.addConStr(constr)
-						payload = self.getGuildInfo(guild)
-						self.relay.setInitPayload(constr, payload.encode())
+						self.setupConStr(guild, serverCon["server"].constr)
 
 					self.json[channelID]["time_since_down"] = -1
 
@@ -297,17 +291,19 @@ class ServerCommands(commands.Cog):
 				self.json[channelID]["time_since_down"] += 1
 				if serverCon["time_since_down"] < self.timeBeforeNotify: continue
 
+				guild = self.bot.get_channel(int(channelID)).guild
+
 				# Create a list of all valid user IDs
 				# This works by appending to this list every valid ID, then setting the toNotify list to this list of valid IDs
 				validIDs = []
 
 				for personToNotify in serverCon["toNotify"]:
-					member = await self.bot.get_channel(int(channelID)).guild.fetch_member(personToNotify)
+					member = await guild.fetch_member(personToNotify)
 					if member is None: continue
 
 					validIDs.append(personToNotify)
 
-					guildName = self.bot.get_channel(int(channelID)).guild.name
+					guildName = guild.name
 					await member.send(f'''
 					**WARNING:** The Source Dedicated Server `{serverCon["server"]._info["name"] if serverCon["server"]._info != {} else "unknown"}` @ `{serverCon["server"].constr}` assigned to this bot is down!\n*You are receiving this message as you are set to be notified regarding server outage at `{guildName}`*
 					''')
@@ -316,7 +312,7 @@ class ServerCommands(commands.Cog):
 
 				serverCon["server"].close()
 				if serverCon["relay"] == 1:
-					self.relay.removeConStr(serverCon["server"].constr)
+					self.removeConStr(guild, serverCon["server"].constr)
 
 				self.autoclosed.add(channelID)
 			else:
@@ -405,3 +401,44 @@ class ServerCommands(commands.Cog):
 
 		for attachment in msg.attachments:
 			self.relay.addMessage((msg.author.display_name, attachment.url, "%02x%02x%02x" % colour, msg.author.top_role.name, attachment.url), constring)
+	
+	# InfoPayload Updaters
+	def updatePayloadConStrs(self, payload: InfoPayload):
+		'''Goes through every constring using this payload and sends them the new data'''
+		for constr in payload.constrs:
+			self.relay.setInitPayload(constr, payload.encode())
+
+	@commands.Cog.listener()
+	async def on_member_join(self, member: discord.Member):
+		self.infoPayloads[member.guild.id].updateMember(member)
+		self.updatePayloadConStrs(self.infoPayloads[member.guild.id])
+
+	@commands.Cog.listener()
+	async def on_member_remove(self, member: discord.Member):
+		self.infoPayloads[member.guild.id].removeMember(member)
+		self.updatePayloadConStrs(self.infoPayloads[member.guild.id])
+
+	@commands.Cog.listener()
+	async def on_member_update(self, _: discord.Member, after: discord.Member):
+		self.infoPayloads[after.guild.id].updateMember(after)
+		self.updatePayloadConStrs(self.infoPayloads[after.guild.id])
+
+	@commands.Cog.listener()
+	async def on_guild_role_create(self, role: discord.Role):
+		self.infoPayloads[role.guild.id].updateRole(role)
+		self.updatePayloadConStrs(self.infoPayloads[role.guild.id])
+
+	@commands.Cog.listener()
+	async def on_guild_role_delete(self, role: discord.Role):
+		self.infoPayloads[role.guild.id].removeRole(role)
+		self.updatePayloadConStrs(self.infoPayloads[role.guild.id])
+
+	@commands.Cog.listener()
+	async def on_guild_role_update(self, _: discord.Role, after: discord.Role):
+		self.infoPayloads[after.guild.id].updateRole(after)
+		self.updatePayloadConStrs(self.infoPayloads[after.guild.id])
+	
+	@commands.Cog.listener()
+	async def on_guild_emojis_update(self, guild: discord.Guild, _: Sequence[discord.Emoji], after: Sequence[discord.Emoji]):
+		self.infoPayloads[guild.id].setEmotes(after)
+		self.updatePayloadConStrs(self.infoPayloads[after.guild.id])

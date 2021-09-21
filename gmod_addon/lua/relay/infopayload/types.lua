@@ -39,7 +39,7 @@ function memberMeta:GetRoles()
 	local roles = {}
 	for i, id in _ipairs(self._roles) do
 		local role = getRole(id)
-		if not role then _error(string_format("Member %s has invalid roles", self:GetId())) end
+		if not role then _error(string_format("Member %i has invalid roles", self:GetId())) end
 		roles[i] = role
 	end
 	return roles
@@ -102,7 +102,7 @@ end
 // Emote
 local emoteMeta = {}
 function emoteMeta:__tostring()
-	return string_format("<:%s:%s>", self:GetName(), self:GetId())
+	return string_format("<:%s:%i>", self:GetName(), self:GetId())
 end
 function emoteMeta:GetId()
 	return self._id

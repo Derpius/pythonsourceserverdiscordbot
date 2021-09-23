@@ -8,33 +8,33 @@ local getRole = DiscordRelay.GetRole
 // Member
 local memberMeta = {}
 function memberMeta:__tostring()
-	local roles = self:GetRoles()
-	return string_format(
-		"[%s] %s (%s#%s)",
-		roles[#roles],
-		self:GetDisplayName(),
-		self:GetUsername(),
-		self:GetDiscriminator()
-	)
+	return string_format("<@%s>", self:GetId())
 end
+
 function memberMeta:GetId()
 	return self._id
 end
+
 function memberMeta:GetDisplayName()
 	return self._displayName
 end
+
 function memberMeta:GetUsername()
 	return self._username
 end
+
 function memberMeta:GetAvatar()
 	return self._avatar
 end
+
 function memberMeta:GetDiscriminator()
 	return self._discrim
 end
+
 function memberMeta:GetTag()
 	return string_format("%s#%s", self:GetUsername(), self:GetDiscriminator())
 end
+
 function memberMeta:GetRoles()
 	local roles = {}
 	for i, id in _ipairs(self._roles) do
@@ -44,10 +44,24 @@ function memberMeta:GetRoles()
 	end
 	return roles
 end
-function memberMeta:HasRole(id)
-	if self._roles[id] then return true end
+
+function memberMeta:HasRole(matchId)
+	for _, id in ipairs(self._roles) do
+		if id == matchId then return true end
+	end
+
 	return false
 end
+
+function memberMeta:GetTopRole()
+	return getRole(self._roles[self._numRoles])
+end
+
+function memberMeta:GetColour()
+	return self:GetTopRole():GetColour()
+end
+memberMeta.GetColor = memberMeta.GetColour
+
 memberMeta.__name = "Member"
 memberMeta.__index = memberMeta
 
@@ -61,7 +75,8 @@ function DiscordRelay.Member(id, username, displayName, avatarUrl, discriminator
 		_displayName = displayName,
 		_avatar = avatarUrl,
 		_discrim = discriminator,
-		_roles = rolesCopy
+		_roles = rolesCopy,
+		_numRoles = #rolesCopy
 	}
 	_setmetatable(member, memberMeta)
 
@@ -71,20 +86,22 @@ end
 // Role
 local roleMeta = {}
 function roleMeta:__tostring()
-	return self:GetName()
+	return string_format("<@&%s>", self:GetId())
 end
+
 function roleMeta:GetId()
 	return self._id
 end
+
 function roleMeta:GetName()
 	return self._name
 end
+
 function roleMeta:GetColour()
 	return self._colour
 end
-function roleMeta:GetColor()
-	return self:GetColour()
-end
+roleMeta.GetColor = roleMeta.GetColour
+
 roleMeta.__name = "Role"
 roleMeta.__index = roleMeta
 
@@ -104,15 +121,19 @@ local emoteMeta = {}
 function emoteMeta:__tostring()
 	return string_format("<:%s:%s>", self:GetName(), self:GetId())
 end
+
 function emoteMeta:GetId()
 	return self._id
 end
+
 function emoteMeta:GetName()
 	return self._name
 end
+
 function emoteMeta:GetUrl()
 	return self._url
 end
+
 emoteMeta.__name = "Emote"
 emoteMeta.__index = emoteMeta
 

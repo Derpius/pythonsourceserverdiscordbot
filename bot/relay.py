@@ -167,6 +167,9 @@ class Relay(object):
 		del infoPayloads[constring]
 		del payloadDirty[constring]
 
+	def isConStrAdded(self, constring: str) -> bool:
+		return constring in infoPayloads
+
 	def addMessage(self, msg: tuple, constring: str):
 		discordMsgs[constring]["chat"].append(msg)
 

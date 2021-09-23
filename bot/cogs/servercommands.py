@@ -187,6 +187,11 @@ class ServerCommands(commands.Cog):
 		if serverCon["server"].isClosed: await ctx.message.reply("Server connection is closed"); return
 
 		if serverCon["relay"] == 1: await ctx.message.reply("The relay is already enabled"); return
+
+		if self.relay.isConStrAdded(serverCon["server"].constr):
+			await ctx.message.reply("The relay is already handling this server in another channel, please disable it there first")
+			return
+
 		serverCon["relay"] = 1
 
 		# Init on relay server

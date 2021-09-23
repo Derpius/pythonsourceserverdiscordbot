@@ -253,7 +253,7 @@ void HttpGETCallback(Handle request, bool failed, bool successful, EHTTPStatusCo
 void HandleHTTPResponse(const char[] body)
 {
 	JSON_Object response = json_decode(body);
-	JSON_Object messages = view_as<JSON_Object>(response.GetObject("messages");)
+	JSON_Object messages = view_as<JSON_Object>(response.GetObject("messages"));
 
 	JSON_Array chat = view_as<JSON_Array>(messages.GetObject("chat"));
 	for (int i = 0; i < chat.Length; i++) {

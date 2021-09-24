@@ -365,6 +365,7 @@ class ServerCommands(commands.Cog):
 			# Handle custom events
 			custom = self.relay.getCustom(constring)
 			for body in custom:
+				if len(body) == 0 or body.isspace(): continue
 				await self.bot.get_channel(channelIDInt).send(body)
 
 			# Handle death events

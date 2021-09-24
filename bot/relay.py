@@ -100,9 +100,10 @@ class Handler(BaseHTTPRequestHandler):
 				return
 
 			if data[k]["type"] == "message":
-				match = avatarPattern.search(requests.get(f"http://steamcommunity.com/profiles/{data[k]['steamID']}?xml=1").text)
-				if match is not None: match = match.group(1)
-				data[k]["icon"] = "http://example.com/" if match is None else match
+				if "icon" not in data[k]:
+					match = avatarPattern.search(requests.get(f"http://steamcommunity.com/profiles/{data[k]['steamID']}?xml=1").text)
+					if match is not None: match = match.group(1)
+					data[k]["icon"] = "http://example.com/" if match is None else match
 
 				sourceMsgs[constring]["chat"].append(data[k])
 			elif data[k]["type"] == "join":

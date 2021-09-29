@@ -34,20 +34,22 @@ function DiscordRelay.GetMember(id)
 end
 
 // Get a list of members who match the given name (sorted by importance descending)
-function DiscordRelay.FindMembersByName(name, caseSensitive)
+function DiscordRelay.FindMembersByName(name, caseSensitive, noPatterns)
 	if caseSensitive == nil then caseSensitive = false end
+	if noPatterns == nil then noPatterns = true end
+
 	if not caseSensitive then name = string_lower(name) end
 
 	return sortedFind(references.members, function(member)
 		local matchIdx = string_find(
 			caseSensitive and member:GetDisplayName() or string_lower(member:GetDisplayName()),
-			name
+			name, 1, noPatterns
 		)
 
 		if not matchIdx then
 			matchIdx = string_find(
 				caseSensitive and member:GetUsername() or string_lower(member:GetUsername()),
-				name
+				name, 1, noPatterns
 			)
 
 			if matchIdx then
@@ -71,14 +73,16 @@ function DiscordRelay.GetRole(id)
 end
 
 // Get a list of roles that match the given name (sorted by importance descending)
-function DiscordRelay.FindRolesByName(name, caseSensitive)
+function DiscordRelay.FindRolesByName(name, caseSensitive, noPatterns)
 	if caseSensitive == nil then caseSensitive = false end
+	if noPatterns == nil then noPatterns = true end
+
 	if not caseSensitive then name = string_lower(name) end
 
 	return sortedFind(references.roles, function(role)
 		return string_find(
 			caseSensitive and role:GetName() or string_lower(role:GetName()),
-			name
+			name, 1, noPatterns
 		)
 	end)
 end
@@ -95,14 +99,16 @@ function DiscordRelay.GetEmote(id)
 end
 
 // Get a list of emotes that match the given name (sorted by importance descending)
-function DiscordRelay.FindEmotesByName(name, caseSensitive)
+function DiscordRelay.FindEmotesByName(name, caseSensitive, noPatterns)
 	if caseSensitive == nil then caseSensitive = false end
+	if noPatterns == nil then noPatterns = true end
+
 	if not caseSensitive then name = string_lower(name) end
 
 	return sortedFind(references.emotes, function(emote)
 		return string_find(
 			caseSensitive and emote:GetName() or string_lower(emote:GetName()),
-			name
+			name, 1, noPatterns
 		)
 	end)
 end

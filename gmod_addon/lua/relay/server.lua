@@ -36,9 +36,26 @@ local function onChat(plr, msg, teamCht)
 	})
 end
 
+local ulxGimpCB, oldOnChat
 concommand.Add("relay_start", function(plr, cmd, args, argStr)
 	if not plr:IsPlayer() and not toggle then
 		toggle = true
+
+		-- ULX gimp and mute support
+		if not ulxGimpCB and hook.GetTable().PlayerSay.ULXGimpCheck then
+			ulxGimpCB = hook.GetTable().PlayerSay.ULXGimpCheck
+			hook.GetTable().PlayerSay.ULXGimpCheck = nil
+			oldOnChat = onChat
+
+			onChat = function(plr, msg, teamCht)
+				local ulxMsg = ulxGimpCB(plr, msg, teamCht)
+				if ulxMsg then
+					if ulxMsg ~= "" then oldOnChat(plr, ulxMsg, teamCht) end
+					return ulxMsg
+				end
+				oldOnChat(plr, msg, teamCht)
+			end
+		end
 
 		hook.Add("PlayerSay", "DiscordRelay.CacheChat", onChat)
 		hook.Add("PlayerInitialSpawn", "DiscordRelay.CacheJoins", function(plr) cachePost({type="join", name=plr:Nick()}) end)

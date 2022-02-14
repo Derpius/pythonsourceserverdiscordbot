@@ -98,7 +98,7 @@ concommand.Add("relay_start", function(plr, cmd, args, argStr)
 				-- GET any available messages from relay server
 				HTTP({
 					success = function(statusCode, content, headers)
-						if statusCode != 200 then return end
+						if statusCode ~= 200 then return end
 
 						JSON = util.JSONToTable(content)
 

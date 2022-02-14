@@ -6,34 +6,34 @@ local _ipairs, _pairs = ipairs, pairs
 local table_insert, table_sort = table.insert, table.sort
 
 local function sortedFind(tbl, match)
-	// Get matches
+	-- Get matches
 	local matches = {}
 	for _, v in _pairs(tbl) do
 		local weight = match(v)
 		if weight then table_insert(matches, {weight, v}) end
 	end
 
-	// Sort
+	-- Sort
 	table_sort(matches, function(a, b) return a[1] < b[1] end)
 
-	// Clean table
+	-- Clean table
 	for i, v in _ipairs(matches) do matches[i] = matches[i][2] end
 
 	return matches
 end
 
-// Members
-// Get the entire member table
+-- Members
+-- Get the entire member table
 function DiscordRelay.GetMembers()
 	return references.members
 end
 
-// Get a member by id
+-- Get a member by id
 function DiscordRelay.GetMember(id)
 	return references.members[id]
 end
 
-// Get a list of members who match the given name (sorted by importance descending)
+-- Get a list of members who match the given name (sorted by importance descending)
 function DiscordRelay.FindMembersByName(name, caseSensitive, noPatterns)
 	if caseSensitive == nil then caseSensitive = false end
 	if noPatterns == nil then noPatterns = true end
@@ -53,7 +53,7 @@ function DiscordRelay.FindMembersByName(name, caseSensitive, noPatterns)
 			)
 
 			if matchIdx then
-				return matchIdx * 10 // Heavily weight only username matches to the end
+				return matchIdx * 10 -- Heavily weight only username matches to the end
 			end
 		end
 
@@ -61,18 +61,18 @@ function DiscordRelay.FindMembersByName(name, caseSensitive, noPatterns)
 	end)
 end
 
-// Roles
-// Get the entire roles table
+-- Roles
+-- Get the entire roles table
 function DiscordRelay.GetRoles()
 	return references.roles
 end
 
-// Get a role by id
+-- Get a role by id
 function DiscordRelay.GetRole(id)
 	return references.roles[id]
 end
 
-// Get a list of roles that match the given name (sorted by importance descending)
+-- Get a list of roles that match the given name (sorted by importance descending)
 function DiscordRelay.FindRolesByName(name, caseSensitive, noPatterns)
 	if caseSensitive == nil then caseSensitive = false end
 	if noPatterns == nil then noPatterns = true end
@@ -87,18 +87,18 @@ function DiscordRelay.FindRolesByName(name, caseSensitive, noPatterns)
 	end)
 end
 
-// Emotes
-// Get the entire emote table
+-- Emotes
+-- Get the entire emote table
 function DiscordRelay.GetEmotes()
 	return references.emotes
 end
 
-// Get an emote by id
+-- Get an emote by id
 function DiscordRelay.GetEmote(id)
 	return references.emotes[id]
 end
 
-// Get a list of emotes that match the given name (sorted by importance descending)
+-- Get a list of emotes that match the given name (sorted by importance descending)
 function DiscordRelay.FindEmotesByName(name, caseSensitive, noPatterns)
 	if caseSensitive == nil then caseSensitive = false end
 	if noPatterns == nil then noPatterns = true end

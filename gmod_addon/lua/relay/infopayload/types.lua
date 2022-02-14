@@ -5,7 +5,7 @@ local _error = error
 
 local getRole = DiscordRelay.GetRole
 
-// Member
+-- Member
 local memberMeta = {}
 function memberMeta:__tostring()
 	return string_format("<@%s>", self:GetId())
@@ -83,7 +83,7 @@ function DiscordRelay.Member(id, username, displayName, avatarUrl, discriminator
 	return member
 end
 
-// Role
+-- Role
 local roleMeta = {}
 function roleMeta:__tostring()
 	return string_format("<@&%s>", self:GetId())
@@ -116,7 +116,7 @@ function DiscordRelay.Role(id, name, colour)
 	return role
 end
 
-// Emote
+-- Emote
 local emoteMeta = {}
 function emoteMeta:__tostring()
 	return string_format("<:%s:%s>", self:GetName(), self:GetId())

@@ -22,9 +22,9 @@ local apiRefTbl = include("api.lua")
 local Member, Role, Emote = include("types.lua")
 local json = include("relay/json.lua/json.lua")
 
-/*
+--[[
 	Netcode
-*/
+]]
 local function decodePayload(payload)
 	members, roles, emotes = {}, {}, {}
 	for id, member in _pairs(payload.members) do
@@ -49,7 +49,7 @@ if SERVER then
 		local chunkSize = relay_infopayload_chunksize:GetInt()
 		if chunkSize == 0 or not chunkSize then _error("Invalid chunk size (change relay_infopayload_chunksize convar)") end
 
-		// Send header
+		-- Send header
 		net_Start("DiscordRelay.InfoPayloadHeader")
 		net_WriteUInt(math_ceil(#data / chunkSize), 32)
 		if plr then
@@ -62,7 +62,7 @@ if SERVER then
 		for i = 1, #data, chunkSize do
 			local packet = string_sub(data, i, i + chunkSize - 1)
 
-			// Send packet
+			-- Send packet
 			net_Start("DiscordRelay.InfoPayload")
 			net_WriteUInt(id, 32)
 			net_WriteData(packet)
@@ -80,13 +80,13 @@ if SERVER then
 	function DiscordRelay.UpdateInfo()
 		_HTTP({
 			success = function(statusCode, content, headers)
-				if statusCode != 200 then return end
+				if statusCode ~= 200 then return end
 
-				// Stream payload to clients
+				-- Stream payload to clients
 				rawPayload = util_Compress(content)
 				stream(rawPayload)
 
-				// Decode
+				-- Decode
 				decodePayload(json.decode(content))
 			end,
 			method = "PATCH",
@@ -95,7 +95,7 @@ if SERVER then
 		})
 	end
 
-	// Clients will send this whenever they init to request the server's data
+	-- Clients will send this whenever they init to request the server's data
 	net_Receive("DiscordRelay.InfoPayload", function(len, plr)
 		stream(rawPayload, plr)
 	end)
@@ -108,7 +108,7 @@ else
 	end)
 
 	net_Receive("DiscordRelay.InfoPayload", function(len)
-		if streamToReceive == 0 then return end // If this client isn't expecting a packet, drop it
+		if streamToReceive == 0 then return end -- If this client isn't expecting a packet, drop it
 
 		local id = net_ReadUInt(32)
 		local packet = net_ReadData((len - 32) / 8)
@@ -124,7 +124,7 @@ else
 		end
 	end)
 
-	// Let the server know we're a new client and should be given a copy of the info payload
+	-- Let the server know we're a new client and should be given a copy of the info payload
 	hook.Add("InitPostEntity", "DiscordRelay.InfoPayloadClientInit", function()
 		net_Start("DiscordRelay.InfoPayload")
 		net_SendToServer()

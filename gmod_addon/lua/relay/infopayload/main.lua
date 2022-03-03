@@ -3,7 +3,7 @@ local relay_connection, relay_infopayload_chunksize = DiscordRelay.RelayConnecti
 local hostport = GetConVar("hostport")
 
 local string_find, string_lower, string_sub = string.find, string.lower, string.sub
-local _pairs = pairs
+local _pairs, _error = pairs, error
 
 local table_concat = table.concat
 

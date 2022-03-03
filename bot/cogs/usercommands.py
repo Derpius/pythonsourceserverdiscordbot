@@ -64,7 +64,7 @@ class UserCommands(commands.Cog):
 				embed.add_field(name="Witnesses Needed", value=str(info["witnesses"]), inline=True)
 				embed.add_field(name="Time Before Arrest", value="%d seconds" % info["duration"], inline=True)
 
-			if info["keywords"]:
+			if "keywords" in info:
 				embed.set_footer(text="Keywords: " + info["keywords"])
 
 			await ctx.message.reply(embed=embed)

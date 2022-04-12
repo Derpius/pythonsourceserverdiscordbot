@@ -396,7 +396,12 @@ class ServerCommands(commands.Cog):
 	@commands.Cog.listener()
 	async def on_message(self, msg: discord.Message):
 		channelID = str(msg.channel.id)
-		if msg.author.bot or channelID not in self.json or self.json[channelID]["relay"] == 0 or self.json[channelID]["server"].isClosed: return
+		if (
+			msg.author.id == self.bot.user.id or
+			channelID not in self.json or
+			self.json[channelID]["relay"] == 0 or
+			self.json[channelID]["server"].isClosed
+		): return
 
 		if ( # If the message is using the command prefix, check if it's a valid command
 			len(msg.content) > len(self.bot.command_prefix) and

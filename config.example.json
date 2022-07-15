@@ -1,0 +1,35 @@
+{
+	"prefix": "!",
+	"accent-colour": "#FF7B00",
+
+	"comment-time-down-before-notify":
+	"Time (in minutes) that a server must be down before notifying members",
+	"time-down-before-notify": 5,
+
+	"comment-relay-port":
+	"Port to run the HTTP relay server on",
+	"relay-port": 8080,
+
+	"comment-message-formats":
+	"Format strings to use for relay messages (see https://www.w3schools.com/python/ref_string_format.asp)",
+	"message-formats": {
+		"join": [
+			"`{player}` just joined the server!"
+		],
+		"leave": [
+			"`{player}` just left the server"
+		],
+		"suicide": [
+			"`{victim}` killed themselves with `{inflictor}`"
+		],
+		"suicide-no-weapon": [
+			"`{victim}` killed themselves"
+		],
+		"kill": [
+			"`{attacker}` killed `{victim}` with `{inflictor}`"
+		],
+		"kill-no-weapon": [
+			"`{attacker}` killed `{victim}`"
+		]
+	}
+}

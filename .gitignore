@@ -131,8 +131,5 @@ dmypy.json
 # VS Code Folder
 .vscode/
 
-# SourceMod Compile Script
-sourcemod_plugin/compile.bat
-
-# SourceMod Binaries
-*.smx
+# User defined config
+config.json

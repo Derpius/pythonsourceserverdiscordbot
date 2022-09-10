@@ -9,7 +9,7 @@ else:
 from .interface import Context, IUser
 from .config import Config
 
-bot = Bot("OTA3Njc2OTc2ODAwNzU1NzYz.GNIgOW.2PzqBJrt0QHVbApKGaVU26Q2B5CroxcoeDNSWw", Config())
+bot = Bot("", Config())
 
 @bot.command
 async def greeting(ctx: Context, someArg: str = "hello") -> None:

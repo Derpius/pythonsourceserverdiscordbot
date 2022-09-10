@@ -15,15 +15,21 @@ class User(IUser):
 class Message(IMessage):
 	_msg: discord.Message
 
-	async def reply(self, message: str) -> None:
-		await self._msg.reply(message)
+	async def reply(self, message: str, masquerade: Masquerade | None = None) -> None:
+		if masquerade is None or masquerade.name is None:
+			await self._msg.reply(message)
+			return
+		await self._msg.reply(f"{masquerade.name} | {message}")
 
 @dataclass
 class Channel(IChannel):
 	_chnl: discord.TextChannel
 
-	async def send(self, message: str) -> None:
-		await self._chnl.send(message)
+	async def send(self, message: str, masquerade: Masquerade | None = None) -> None:
+		if masquerade is None or masquerade.name is None:
+			await self._chnl.send(message)
+			return
+		await self._chnl.send(f"{masquerade.name} | {message}")
 
 UNWRAP = {
 	IUser: discord.Member,
@@ -31,14 +37,14 @@ UNWRAP = {
 	Context: commands.Context
 }
 WRAP = {
-	discord.Member: lambda member: User(member.id, member.name, str(member.avatar_url), member.nick, member),
+	discord.Member: lambda member: User(member.id, member.name, str(member.display_avatar), member.nick, member),
 	discord.Message: lambda message: Message(
 		Channel(message.channel.id, message.channel.name, message.channel),
 		message.id,
 		User(
 			message.author.id,
 			message.author.name,
-			str(message.author.avatar_url),
+			str(message.author.display_avatar),
 			message.author.nick,
 			message.author
 		),
@@ -55,7 +61,7 @@ WRAP = {
 		User(
 			ctx.message.author.id,
 			ctx.message.author.name,
-			str(ctx.message.author.avatar_url),
+			str(ctx.message.author.display_avatar),
 			ctx.message.author.nick,
 			ctx.message.author
 		),
@@ -74,7 +80,7 @@ class Bot(IBot):
 		# Set up intents
 		intents = discord.Intents.default()
 		intents.members = True
-		#intents.message_content = True
+		intents.message_content = True
 
 		# Set up bot
 		bot = commands.Bot(config.prefix, case_insensitive=True, intents=intents)
@@ -90,7 +96,9 @@ class Bot(IBot):
 			if not isinstance(message.channel, discord.TextChannel) or not isinstance(message.author, discord.Member): return
 			if "onMessage" in self.events:
 				await self.events["onMessage"](WRAP[discord.Message](message))
-			await bot.process_commands(message)
+			
+			ctx = await self._bot.get_context(message)
+			await self._bot.invoke(ctx) # type: ignore
 		
 		self._bot = bot
 	
@@ -101,12 +109,12 @@ class Bot(IBot):
 		super().command(func)
 
 		sig = inspect.Signature([
-			inspect.Parameter(
-				name,
-				inspect.Parameter.POSITIONAL_OR_KEYWORD,
+			commands.Parameter(
+				name=name,
+				kind=inspect.Parameter.POSITIONAL_OR_KEYWORD,
 				default=param.default,
-				annotation=UNWRAP[param.annotation]
-			) if param.annotation in UNWRAP else param for name, param in inspect.signature(func).parameters.items()
+				annotation=UNWRAP[param.annotation] if param.annotation in UNWRAP else param.annotation
+			) for name, param in inspect.signature(func).parameters.items()
 		])
 
 		async def wrapper(ctx: commands.Context, *args):
@@ -125,4 +133,4 @@ class Bot(IBot):
 
 		wrapper.__doc__ = func.__doc__
 		wrapper.__signature__ = sig
-		self._bot.add_command(commands.Command(wrapper, name=func.__name__))
+		self._bot.command(name=func.__name__)(wrapper)

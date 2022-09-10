@@ -22,7 +22,7 @@ class InfoPayload:
 			"display-name": member.display_name,
 			"username": member.name,
 			"discriminator": member.discriminator,
-			"avatar": str(member.avatar_url),
+			"avatar": str(member.display_avatar),
 			"roles": [str(role.id) for role in member.roles]
 		}
 	

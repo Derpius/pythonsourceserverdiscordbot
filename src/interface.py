@@ -1,9 +1,14 @@
-from argparse import ArgumentError
 from dataclasses import dataclass
 from typing import Callable, Coroutine, Tuple
 import inspect
 
 from .config import Config
+
+@dataclass
+class Masquerade:
+	name: str | None = None
+	avatar: str | None = None
+	colour: str | None = None
 
 @dataclass
 class IEmbed:
@@ -25,7 +30,7 @@ class IChannel:
 	id: str
 	name: str
 
-	async def send(self, message: str) -> None:
+	async def send(self, message: str, masquerade: Masquerade | None = None) -> None:
 		pass
 
 @dataclass
@@ -38,7 +43,7 @@ class IMessage:
 	attachments: list[str]
 	embeds: list[IEmbed]
 
-	async def reply(self, message: str) -> None:
+	async def reply(self, message: str, masquerade: Masquerade | None = None) -> None:
 		pass
 
 @dataclass
@@ -49,11 +54,11 @@ class Context:
 	def channel(self) -> IChannel:
 		return self.message.channel
 
-	async def send(self, message: str) -> None:
-		await self.channel.send(message)
+	async def send(self, message: str, masquerade: Masquerade | None = None) -> None:
+		await self.channel.send(message, masquerade)
 
-	async def reply(self, message: str) -> None:
-		await self.message.reply(message)
+	async def reply(self, message: str, masquerade: Masquerade | None = None) -> None:
+		await self.message.reply(message, masquerade)
 
 class IBot:
 	def __init__(self, token: str, config: Config) -> None:
@@ -69,12 +74,12 @@ class IBot:
 		pass
 
 	def command(self, func: Coroutine) -> None:
-		if func.__name__ in self.commands: raise ArgumentError("Command already registered")
+		if func.__name__ in self.commands: raise ValueError("Command already registered")
 		self.commands[func.__name__] = {
 			"func": func,
 			"help": func.__doc__
 		}
 	
 	def event(self, func: Coroutine) -> None:
-		if func.__name__ in self.events: raise ArgumentError("Event already registered")
+		if func.__name__ in self.events: raise ValueError("Event already registered")
 		self.events[func.__name__] = func

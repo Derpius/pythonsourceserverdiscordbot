@@ -111,14 +111,20 @@ class Context:
 	async def reply(self, content: str | None = None, masquerade: Masquerade | None = None, embed: Embed | None = None) -> None:
 		await self.message.reply(content, masquerade, embed)
 
+@dataclass
+class Loop:
+	interval: float
+	func: Coroutine
+
 class IBot:
 	def __init__(self, token: str, config: Config) -> None:
 		self.token = token
 		self.config = config
 		self.commands = {}
 		self.events = {}
+		self.loops: List[Loop] = []
 	
-	def run(self) -> None:
+	async def start(self) -> None:
 		pass
 
 	async def getChannel(self, id: str) -> IChannel:
@@ -134,3 +140,8 @@ class IBot:
 	def event(self, func: Coroutine) -> None:
 		if func.__name__ in self.events: raise ValueError("Event already registered")
 		self.events[func.__name__] = func
+	
+	def loop(self, interval: float) -> None:
+		def decorator(func: Coroutine) -> None:
+			self.loops.append(Loop(interval, func))
+		return decorator

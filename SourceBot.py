@@ -1,3 +1,4 @@
+import asyncio
 from calendar import c
 from datetime import timedelta
 import os
@@ -398,8 +399,18 @@ async def peopleToNotify(ctx: Context):
 	data[ctx.channel].toNotify = validIDs
 	await ctx.reply(msg[:-2])
 
+@bot.loop(1)
+async def testLoop():
+	print("looped!")
+
 @bot.event
 async def onReady(self) -> None:
 	print("Bot loaded!")
 
-bot.run()
+async def main():
+	await bot.start()
+
+try:
+	asyncio.run(main())
+except KeyboardInterrupt:
+	pass

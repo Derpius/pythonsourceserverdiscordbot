@@ -1,3 +1,4 @@
+import asyncio
 import re
 
 import discord
@@ -135,8 +136,15 @@ class Bot(IBot):
 		
 		self._bot = bot
 	
-	def run(self) -> None:
-		self._bot.run(self.token)
+	async def start(self) -> None:
+		for loop in self.loops:
+			async def loopWrapper():
+				while True:
+					await loop.func()
+					await asyncio.sleep(loop.interval)
+			asyncio.create_task(loopWrapper())
+
+		await self._bot.start(self.token)
 
 	def command(self, func: Coroutine) -> None:
 		super().command(func)

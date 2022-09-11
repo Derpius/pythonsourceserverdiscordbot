@@ -14,7 +14,7 @@ class Server(SourceServer):
 
 class Servers:
 	def __init__(self, json: dict) -> None:
-		self._channels: Dict[str, Server] = {id: Server(data["server"], data["relay"] != 0, data["toNotify"]) for id, data in json.items()}
+		self._channels: Dict[str, Server] = {id: Server(data["server"], data["relay"], data["toNotify"]) for id, data in json.items()}
 
 	def encode(self) -> Dict[str, Server]:
 		return {id: {"server": server.constr, "relay": server.relay, "toNotify": server.toNotify} for id, server in self._channels.items()}

@@ -35,7 +35,7 @@ class User(IUser):
 	_usr: discord.Member
 
 	def __init__(self, member: discord.Member) -> None:
-		super().__init__(str(member.id), member.name, str(member.display_avatar), member.nick)
+		super().__init__(str(member.id), member.name, str(member.display_avatar), member.nick, member.bot)
 		self._usr = member
 
 	def __str__(self) -> str:
@@ -58,7 +58,9 @@ class Guild(IGuild):
 		self._guild = guild
 
 	async def fetchMember(self, id: str) -> IUser | None:
-		return await self._guild.fetch_member(int(id))
+		member = await self._guild.fetch_member(int(id))
+		if member: return User(member)
+		return None
 
 class Message(IMessage):
 	_msg: discord.Message

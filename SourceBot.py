@@ -14,7 +14,7 @@ except ModuleNotFoundError:
 else:
 	from src.endpoints.discord_endpoint import Bot
 
-from src.interface import Context, Embed, Masquerade, Permission
+from src.interface import Context, Embed, IUser, Masquerade, Permission
 from src.config import Config, MessageFormats
 from src.data import Server, Servers
 from src.utils import formatTimedelta
@@ -149,7 +149,7 @@ async def retry(ctx: Context):
 			# For every person set to be notified, send them a DM to say the server is back online
 			for personToNotify in data[ctx.channel].toNotify:
 				member = await ctx.guild.fetchMember(personToNotify)
-				if member is None: continue
+				if not member: continue
 
 				validIDs.append(personToNotify)
 
@@ -283,7 +283,7 @@ async def rules(ctx: Context, ruleName: str | None = None):
 		print(e.message)
 		return
 
-	if ruleName is None:
+	if not ruleName:
 		if not ctx.author.hasPermission(Permission.ManageGuild):
 			await ctx.reply(f"You don't have permission to show all rules for anti-spam reasons {ctx.author}")
 			return
@@ -316,6 +316,77 @@ async def rules(ctx: Context, ruleName: str | None = None):
 		return
 
 	await ctx.reply(f"{ruleName}: {rules[ruleName]}")
+
+@bot.command
+async def notify(ctx: Context, target: IUser = None):
+	'''
+	Tells the bot to notify you or a person of your choice regarding server outage (loss of server connection, and reconnection to a dropped server).  
+	Passing a person without you having manage server perms is not allowed (unless that person is yourself).
+	'''
+	if not await checkChannelBound(ctx): return
+
+	affectingSelf = target is None
+	if target:
+		if not ctx.author.hasPermission(Permission.ManageGuild) and ctx.author.id != target.id:
+			await ctx.reply(f"You don't have permission to set the notification status for other people {ctx.author}")
+			return
+	else: target = ctx.author
+
+	if target.bot: await ctx.reply("Bots cannot be notified regarding server outage"); return
+
+	if target.id in data[ctx.channel].toNotify:
+		await ctx.reply("Already configured to notify " + ("you" if affectingSelf else str(target)))
+	else:
+		data[ctx.channel].toNotify.append(target.id)
+		await ctx.reply(f"{'You' if affectingSelf else str(target)} will now be notified regarding server outage")
+
+@bot.command
+async def dontNotify(ctx: Context, target: IUser = None):
+	'''
+	Tells the bot to stop notifying you or a person of your choice regarding server outage (loss of server connection, and reconnection to a dropped server).  
+	Passing a person without you having manage server perms is not allowed (unless that person is yourself).
+	'''
+	if not await checkChannelBound(ctx): return
+
+	affectingSelf = target is None
+	if target:
+		if not ctx.author.hasPermission(Permission.ManageGuild) and ctx.author.id != target.id:
+			await ctx.reply(f"You don't have permission to set the notification status for other people {ctx.author}")
+			return
+	else: target = ctx.author
+
+	if target.id not in data[ctx.channel].toNotify:
+		await ctx.reply("Already configured to not notify " + ("you" if affectingSelf else str(target)))
+	else:
+		data[ctx.channel].toNotify.remove(target.id)
+		await ctx.reply(f"{'You' if affectingSelf else str(target)} will no longer be notified regarding server outage")
+
+@bot.command
+async def peopleToNotify(ctx: Context):
+	'''
+	Lists all people set to be notified
+	'''
+	if not await checkChannelBound(ctx): return
+
+	if not data[ctx.channel].toNotify: # If no one is set to be notified don't bother building a message
+		await ctx.reply(f"No one is set to be notified regarding server outage\n*use `{config.prefix}notify` to set someone to be notified, and `{config.prefix}dontNotify` to disable notifications*")
+		return
+
+	# As with the actual ping task, we save a list of valid IDs and replace the existing list with this one after the loop
+	validIDs = []
+
+	# Message to be sent
+	msg = "*The following people are set to be notified regarding outage from the server linked to this channel:*\n"
+
+	for userID in data[ctx.channel].toNotify:
+		member = await ctx.guild.fetchMember(userID)
+		if not member: continue
+
+		validIDs.append(userID)
+		msg += (str(ctx.author) if ctx.author.id == userID else f"`{member.displayName}`") + ", "
+
+	data[ctx.channel].toNotify = validIDs
+	await ctx.reply(msg[:-2])
 
 @bot.event
 async def onReady(self) -> None:

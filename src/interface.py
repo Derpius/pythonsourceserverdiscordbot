@@ -39,6 +39,12 @@ class IUser:
 	name: str
 	avatar: str
 	nick: str | None
+	bot: bool
+
+	@property
+	def displayName(self) -> str:
+		if self.nick: return self.nick
+		return self.name
 
 	def __str__(self) -> str:
 		return self.id

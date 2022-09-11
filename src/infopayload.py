@@ -58,7 +58,7 @@ class InfoPayload:
 		for role in roles: self.updateRole(role)
 	
 	# Note that emotes have no individual events, so separate update and remove methods are pointless
-	def setEmotes(self, emotes: tuple[IEmoji]):
+	def setEmotes(self, emotes: list[IEmoji]):
 		'''set the emotes for the server'''
 		self._dirty = True
 

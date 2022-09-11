@@ -15,10 +15,12 @@ except ModuleNotFoundError:
 else:
 	from src.endpoints.discord_endpoint import Bot
 
-from src.interface import Context, Embed, IUser, Masquerade, Permission
+from src.interface import Context, Embed, IGuild, IUser, Masquerade, Permission
 from src.config import Config, MessageFormats
 from src.data import Server, Servers
 from src.utils import formatTimedelta
+from src.relay import Relay
+from src.infopayload import InfoPayload
 
 config = None
 with open(os.path.join(os.path.dirname(__file__), "config.json"), "r") as f:
@@ -56,7 +58,9 @@ def onExit(filepath: str):
 atexit.register(onExit, __file__)
 
 bot = Bot(token, config)
+relay = Relay(config.relayPort)
 autoclosed = []
+infoPayloads: dict[int, InfoPayload] = {}
 
 async def checkChannelBound(ctx: Context) -> bool:
 	if data.channelBound(ctx.channel): return True
@@ -75,6 +79,32 @@ async def checkPerms(ctx: Context) -> bool:
 		await ctx.reply(f"You don't have permission to run that command {ctx.author}")
 		return False
 	return True
+
+def getGuildInfo(guild: IGuild) -> InfoPayload:
+	'''Get the appropriate InfoPayload for this context, or create one if none exists'''
+	if guild.id not in infoPayloads:
+		# Create an info payload for this guild if none exists
+		payload = InfoPayload()
+		
+		payload.setRoles(guild.roles)
+		payload.setEmotes(guild.emojis)
+		payload.setMembers(guild.members)
+
+		infoPayloads[guild.id] = payload
+	return infoPayloads[guild.id]
+
+def setupConStr(guild: IGuild, constr: str):
+	'''Perform initialisation for a new relaying constring'''
+	relay.addConStr(constr)
+	payload = getGuildInfo(guild)
+	payload.addConStr(constr)
+	relay.setInitPayload(constr, payload.encode())
+
+def removeConStr(guild: IGuild, constr: str):
+	'''Perform deinitialisation of a relaying constring'''
+	relay.removeConStr(constr)
+	if guild.id in infoPayloads:
+		infoPayloads[guild.id].removeConStr(constr)
 
 @bot.command
 async def connect(ctx: Context, connectionString: str):
@@ -107,7 +137,7 @@ async def disconnect(ctx: Context):
 	if not await checkChannelBound(ctx): return
 
 	if data[ctx.channel].relay:
-		pass#self.removeConStr(ctx.guild, self.json[channelID]['server'].constr)
+		removeConStr(ctx.guild, data[ctx.channel].constr)
 
 	data.unbindChannel(ctx.channel)
 	await ctx.reply("Connection removed successfully!")
@@ -123,7 +153,7 @@ async def close(ctx: Context):
 		return
 
 	if data[ctx.channel].relay:
-		pass#self.removeConStr(ctx.guild, self.json[channelID]['server'].constr)
+		removeConStr(ctx.guild, data[ctx.channel].constr)
 
 	data[ctx.channel].close()
 	await ctx.reply(f"Server closed successfully!\nReconnect with `{config.prefix}retry`")
@@ -143,7 +173,7 @@ async def retry(ctx: Context):
 		await ctx.reply("Failed to reconnect to server")
 	else:
 		if data[ctx.channel]:
-			pass#self.setupConStr(ctx.guild, self.json[channelID]["server"].constr)
+			setupConStr(ctx.guild, data[ctx.channel].constr)
 		
 		data[ctx.channel].timeSinceDown = -1
 		await ctx.reply("Successfully reconnected to server!")
@@ -413,7 +443,7 @@ async def pingServer():
 				guild = bot.getChannel(channelID).guild
 
 				if server.relay:
-					pass#self.setupConStr(guild, serverCon["server"].constr)
+					setupConStr(guild, server.constr)
 
 				server.timeSinceDown = -1
 
@@ -464,7 +494,7 @@ async def pingServer():
 
 			server.close()
 			if server.relay:
-				pass#self.removeConStr(guild, serverCon["server"].constr)
+				removeConStr(guild, server.constr)
 
 			autoclosed.add(channelID)
 		else:

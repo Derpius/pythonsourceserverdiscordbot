@@ -60,7 +60,12 @@ class Guild(IGuild):
 	_guild: discord.Guild
 
 	def __init__(self, guild: discord.Guild) -> None:
-		super().__init__(str(guild.id), guild.name)
+		super().__init__(
+			str(guild.id), guild.name,
+			[Role(role) for role in guild.roles],
+			[Emoji(emoji) for emoji in guild.emojis],
+			[User(member) for member in guild.members]
+		)
 		self._guild = guild
 
 	async def fetchMember(self, id: str) -> IUser | None:

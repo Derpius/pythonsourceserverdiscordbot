@@ -31,12 +31,12 @@ def get_ip():
 	return IP
 
 def relayThread(port):
-	def onExit(filepath: str):
+	def onExit():
 		print("Relay thread shutdown")
 		try: server.shutdown()
 		except: print("Error closing server")
 
-	atexit.register(onExit, __file__)
+	atexit.register(onExit)
 
 	# Define server
 	server = ThreadedHTTPServer(("", port), Handler)

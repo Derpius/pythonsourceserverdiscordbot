@@ -41,6 +41,16 @@ class Embed:
 
 	def addField(self, name: str, value: str, inline: bool = True):
 		self.fields.append(EmbedField(name, value, inline))
+
+@dataclass
+class IEmoji:
+	id: str
+	name: str
+	url: str
+	
+	def __str__(self) -> str:
+		return self.url
+
 @dataclass
 class IRole:
 	id: str
@@ -74,6 +84,9 @@ class IUser:
 class IGuild:
 	id: str
 	name: str
+	roles: list[IRole]
+	emojis: list[IEmoji]
+	members: list[IUser]
 
 	async def fetchMember(self, id: str) -> IUser | None:
 		pass
@@ -103,15 +116,6 @@ class IMessage:
 
 	async def reply(self, content: str | None = None, masquerade: Masquerade | None = None, embed: Embed | None = None) -> None:
 		pass
-
-@dataclass
-class IEmoji:
-	id: str
-	name: str
-	url: str
-	
-	def __str__(self) -> str:
-		return self.url
 
 @dataclass
 class Context:

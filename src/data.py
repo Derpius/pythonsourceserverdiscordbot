@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 from os import times
-from typing import Dict, List
+from typing import Dict, Iterator, List
 from sourceserver.sourceserver import SourceServer
 from .interface import IChannel
 
@@ -15,6 +15,9 @@ class Server(SourceServer):
 class Servers:
 	def __init__(self, json: dict) -> None:
 		self._channels: Dict[str, Server] = {id: Server(data["server"], data["relay"], data["toNotify"]) for id, data in json.items()}
+	
+	def __iter__(self) -> Iterator[tuple[str, Server]]:
+		return self._channels.items().__iter__()
 
 	def encode(self) -> Dict[str, Server]:
 		return {id: {"server": server.constr, "relay": server.relay, "toNotify": server.toNotify} for id, server in self._channels.items()}

@@ -399,9 +399,76 @@ async def peopleToNotify(ctx: Context):
 	data[ctx.channel].toNotify = validIDs
 	await ctx.reply(msg[:-2])
 
-@bot.loop(1)
-async def testLoop():
-	print("looped!")
+@bot.loop(60)
+async def pingServer():
+	await bot.waitUntilReady()
+
+	for channelID, server in data:
+		if server.isClosed:
+			if not channelID in autoclosed: continue # If the server was closed manually just continue
+
+			# Attempt to retry the connection to the server
+			server.retry()
+			if not server.isClosed:
+				guild = bot.getChannel(channelID).guild
+
+				if server.relay:
+					pass#self.setupConStr(guild, serverCon["server"].constr)
+
+				server.timeSinceDown = -1
+
+				# Create a list of all valid user IDs
+				# This works by appending to this list every valid ID, then setting the toNotify list to this list of valid IDs
+				validIDs = []
+
+				# For every person set to be notified, send them a DM to say the server is back online
+				for personToNotify in server.toNotify:
+					member = await guild.fetchMember(personToNotify)
+					if not member: continue
+
+					validIDs.append(personToNotify)
+
+					guildName = guild.name
+					await member.send(f'''
+					The Source Dedicated Server `{server._info["name"] if server._info != {} else "unknown"}` @ `{server.constr}` assigned to this bot just came back up!\n*You are receiving this message as you are set to be notified regarding server outage at `{guildName}`*
+					''')
+
+				server.toNotify = validIDs
+				autoclosed.remove(channelID)
+			continue
+
+		try:
+			server.ping()
+		except SourceError:
+			server.timeSinceDown += 1
+			if server.timeSinceDown < config.timeDownBeforeNotify: continue
+
+			guild = bot.getChannel(channelID).guild
+
+			# Create a list of all valid user IDs
+			# This works by appending to this list every valid ID, then setting the toNotify list to this list of valid IDs
+			validIDs = []
+
+			for personToNotify in server.toNotify:
+				member = await guild.fetchMember(personToNotify)
+				if not member: continue
+
+				validIDs.append(personToNotify)
+
+				guildName = guild.name
+				await member.send(f'''
+				**WARNING:** The Source Dedicated Server `{server._info["name"] if server._info != {} else "unknown"}` @ `{server.constr}` assigned to this bot is down!\n*You are receiving this message as you are set to be notified regarding server outage at `{guildName}`*
+				''')
+
+			server.toNotify = validIDs
+
+			server.close()
+			if server.relay:
+				pass#self.removeConStr(guild, serverCon["server"].constr)
+
+			autoclosed.add(channelID)
+		else:
+			if server.timeSinceDown != -1: server.timeSinceDown = -1
 
 @bot.event
 async def onReady(self) -> None:

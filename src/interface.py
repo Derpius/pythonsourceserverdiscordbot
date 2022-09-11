@@ -127,7 +127,10 @@ class IBot:
 	async def start(self) -> None:
 		pass
 
-	async def getChannel(self, id: str) -> IChannel:
+	async def waitUntilReady(self) -> None:
+		pass
+
+	def getChannel(self, id: str) -> IChannel:
 		pass
 
 	def command(self, func: Coroutine) -> None:

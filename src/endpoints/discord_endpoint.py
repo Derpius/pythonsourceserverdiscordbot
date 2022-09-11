@@ -145,6 +145,9 @@ class Bot(IBot):
 			asyncio.create_task(loopWrapper())
 
 		await self._bot.start(self.token)
+	
+	async def waitUntilReady(self) -> None:
+		await self._bot.wait_until_ready()
 
 	def command(self, func: Coroutine) -> None:
 		super().command(func)
@@ -175,3 +178,6 @@ class Bot(IBot):
 		wrapper.__doc__ = func.__doc__
 		wrapper.__signature__ = sig
 		self._bot.command(name=func.__name__)(wrapper)
+	
+	def getChannel(self, id: str) -> IChannel:
+		return self._bot.get_channel()

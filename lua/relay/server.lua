@@ -106,9 +106,9 @@ concommand.Add("relay_start", function(plr, cmd, args, argStr)
 
 						for _, msg in pairs(JSON.messages.chat) do
 							print("[Relay | "..msg[4].."] " .. msg[1] .. ": " .. msg[2])
-							local colourHex = tonumber(msg[3], 16)
-							local colour = Color(bit.rshift(colourHex, 16), bit.band(bit.rshift(colourHex, 8), 0xff), bit.band(colourHex, 0xff))
-							
+							local colour = msg[3]
+							colour = Color(bit.rshift(colour, 16), bit.band(bit.rshift(colour, 8), 0xff), bit.band(colour, 0xff))
+
 							if hook.Call("Relay.Message", gm, msg[1], msg[2], colour, msg[4], msg[5]) ~= false then
 								net.Start("Relay.NetworkMsg")
 									net.WriteString(msg[1])

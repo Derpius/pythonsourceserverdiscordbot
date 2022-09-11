@@ -25,7 +25,7 @@ def compileEmbed(embed: Embed | None) -> discord.Embed | None:
 		compiled.set_footer(text=embed.footer)
 	if embed.icon:
 		compiled.set_thumbnail(url=embed.icon)
-	
+
 	if embed.fields:
 		for field in embed.fields:
 			compiled.add_field(name=field.name, value=field.value, inline=field.inline)
@@ -151,18 +151,19 @@ class Bot(IBot):
 			await bot.wait_until_ready()
 			if "onReady" in self.events: await self.events["onReady"](self)
 
-		commandPattern = re.compile("^[^\s]*")
 		@bot.event
 		async def on_message(message: discord.Message):
 			if not isinstance(message.channel, discord.TextChannel) or not isinstance(message.author, discord.Member): return
+			if message.author.id == self._bot.user.id: return # Don't run on our messages
+
 			if "onMessage" in self.events:
 				await self.events["onMessage"](WRAP[discord.Message](message))
 			
 			ctx = await self._bot.get_context(message)
 			await self._bot.invoke(ctx) # type: ignore
-		
+
 		self._bot = bot
-	
+
 	async def start(self) -> None:
 		for loop in self.loops:
 			async def loopWrapper():
@@ -172,7 +173,7 @@ class Bot(IBot):
 			asyncio.create_task(loopWrapper())
 
 		await self._bot.start(self.token)
-	
+
 	async def waitUntilReady(self) -> None:
 		await self._bot.wait_until_ready()
 
@@ -205,6 +206,6 @@ class Bot(IBot):
 		wrapper.__doc__ = func.__doc__
 		wrapper.__signature__ = sig
 		self._bot.command(name=func.__name__)(wrapper)
-	
+
 	def getChannel(self, id: str) -> IChannel:
 		return self._bot.get_channel()

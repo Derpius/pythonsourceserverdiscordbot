@@ -11,7 +11,7 @@ import socket
 infoPayloads = {}
 payloadDirty = {}
 
-discordMsgs = {}
+relayMsgs = {}
 sourceMsgs = {}
 
 avatarPattern = re.compile(r"<avatarIcon><!\[CDATA\[(.*?)\]\]></avatarIcon>")
@@ -57,7 +57,7 @@ class Handler(BaseHTTPRequestHandler):
 			return
 
 		constring = f"{self.client_address[0] if self.client_address[0] != '127.0.0.1' else get_ip()}:{self.headers['Source-Port']}"
-		if constring not in discordMsgs:
+		if constring not in relayMsgs:
 			self.send_response(403)
 			self.end_headers()
 			return
@@ -67,10 +67,10 @@ class Handler(BaseHTTPRequestHandler):
 		self.end_headers()
 
 		self.wfile.write(bytes(json.dumps({
-			"messages": discordMsgs[constring],
+			"messages": relayMsgs[constring],
 			"init-info-dirty": payloadDirty[constring]
-		}), encoding="utf-8"))	
-		discordMsgs[constring] = {"chat": [], "rcon": []}
+		}), encoding="utf-8"))
+		relayMsgs[constring] = {"chat": [], "rcon": []}
 
 	def do_POST(self):
 		'''The "receiver" for source server chat'''
@@ -158,12 +158,12 @@ class Relay(object):
 		payloadDirty[constring] = True
 
 	def addConStr(self, constring: str):
-		discordMsgs[constring] = {"chat": [], "rcon": []}
+		relayMsgs[constring] = {"chat": [], "rcon": []}
 		sourceMsgs[constring] = {"chat": [], "joins": [], "leaves": [], "deaths": [], "custom": []}
 		infoPayloads[constring] = ""
 		payloadDirty[constring] = False
 	def removeConStr(self, constring: str):
-		del discordMsgs[constring]
+		del relayMsgs[constring]
 		del sourceMsgs[constring]
 		del infoPayloads[constring]
 		del payloadDirty[constring]
@@ -172,10 +172,10 @@ class Relay(object):
 		return constring in infoPayloads
 
 	def addMessage(self, msg: tuple, constring: str):
-		discordMsgs[constring]["chat"].append(msg)
+		relayMsgs[constring]["chat"].append(msg)
 
 	def addRCON(self, command: str, constring: str):
-		discordMsgs[constring]["rcon"].append(command)
+		relayMsgs[constring]["rcon"].append(command)
 
 	def getMessages(self, constring: str) -> list:
 		ret = sourceMsgs[constring]["chat"]
@@ -193,7 +193,7 @@ class Relay(object):
 		sourceMsgs[constring]["deaths"] = []
 		return ret
 
-	def getCustom(self, constring: str) -> list:
+	def getCustom(self, constring: str) -> list[str]:
 		ret = sourceMsgs[constring]["custom"]
 		sourceMsgs[constring]["custom"] = []
 		return ret

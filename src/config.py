@@ -1,4 +1,10 @@
 from dataclasses import dataclass, field
+from enum import Enum
+
+class Backend(Enum):
+	Undefined = -1,
+	Discord = 0,
+	Revolt = 1
 
 @dataclass
 class MessageFormats:
@@ -11,6 +17,7 @@ class MessageFormats:
 
 @dataclass
 class Config:
+	backend: Backend = Backend.Undefined
 	prefix: str = "!"
 	accentColour: str = "#ffffff"
 	timeDownBeforeNotify: float = 8080

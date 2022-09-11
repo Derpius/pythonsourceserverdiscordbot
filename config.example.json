@@ -1,4 +1,6 @@
 {
+	"comment-backend": "Which API endpoint to use (discord, revolt)",
+	"backend": "discord",
 	"token": "Bot token here",
 	"prefix": "!",
 	"accent-colour": "#FF7B00",

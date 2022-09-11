@@ -17,6 +17,9 @@ class Colour:
 	def __str__(self) -> str:
 		return f"#{self.r:02X}{self.g:02X}{self.b:02X}"
 
+	def __int__(self) -> int:
+		return (self.r << 16) + (self.g << 8) + self.b
+
 @dataclass
 class Masquerade:
 	name: str | None = None
@@ -42,8 +45,11 @@ class Embed:
 	def addField(self, name: str, value: str, inline: bool = True):
 		self.fields.append(EmbedField(name, value, inline))
 
+class IGuild: pass
+
 @dataclass
 class IEmoji:
+	guild: IGuild
 	id: str
 	name: str
 	url: str
@@ -53,12 +59,14 @@ class IEmoji:
 
 @dataclass
 class IRole:
+	guild: IGuild
 	id: str
 	name: str
-	colour: Colour
+	colour: Colour | None
 
 @dataclass
 class IUser:
+	guild: IGuild
 	id: str
 	name: str
 	avatar: str
@@ -70,6 +78,19 @@ class IUser:
 	def displayName(self) -> str:
 		if self.nick: return self.nick
 		return self.name
+
+	@property
+	def colour(self) -> Colour:
+		roles = self.roles[1:] # remove @everyone
+
+		for role in reversed(roles):
+			if role.colour:
+				return role.colour
+		return Colour(255, 255, 255)
+
+	@property
+	def topRole(self) -> IRole:
+		return self.roles[-1]
 
 	def __str__(self) -> str:
 		return self.id

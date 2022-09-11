@@ -4,19 +4,13 @@ from datetime import timedelta
 import os
 import atexit
 import json
+import random
+import time
 
 from sourceserver.exceptions import SourceError
 
-try:
-	import discord
-except ModuleNotFoundError:
-	import revolt
-	from src.endpoints.revolt_endpoint import Bot
-else:
-	from src.endpoints.discord_endpoint import Bot
-
-from src.interface import Context, Embed, IGuild, IUser, Masquerade, Permission
-from src.config import Config, MessageFormats
+from src.interface import Colour, Context, Embed, IEmoji, IGuild, IMessage, IRole, IUser, Masquerade, Permission
+from src.config import Backend, Config, MessageFormats
 from src.data import Server, Servers
 from src.utils import formatTimedelta
 from src.relay import Relay
@@ -26,8 +20,14 @@ config = None
 with open(os.path.join(os.path.dirname(__file__), "config.json"), "r") as f:
 	config = json.load(f)
 
+BACKENDS = {
+	"discord": Backend.Discord,
+	"revolt": Backend.Revolt
+}
+
 token = config["token"]
 config = Config(
+	BACKENDS[config["backend"]] if config["backend"] in BACKENDS else Backend.Undefined,
 	config["prefix"], config["accent-colour"],
 	config["time-down-before-notify"],
 	config["relay-port"],
@@ -37,6 +37,13 @@ config = Config(
 		config["message-formats"]["kill"], config["message-formats"]["kill-no-weapon"]
 	)
 )
+
+if config.backend == Backend.Discord:
+	from src.endpoints.discord_endpoint import Bot
+elif config.backend == Backend.Revolt:
+	from src.endpoints.revolt_endpoint import Bot
+else:
+	raise Exception("Invalid backend in config")
 
 data = None
 dataPath = os.path.join(os.path.dirname(__file__), "data.json")
@@ -84,10 +91,10 @@ def getGuildInfo(guild: IGuild) -> InfoPayload:
 	'''Get the appropriate InfoPayload for this context, or create one if none exists'''
 	if guild.id not in infoPayloads:
 		# Create an info payload for this guild if none exists
-		payload = InfoPayload()
+		payload = InfoPayload(config.backend)
 		
 		payload.setRoles(guild.roles)
-		payload.setEmotes(guild.emojis)
+		payload.setEmojis(guild.emojis)
 		payload.setMembers(guild.members)
 
 		infoPayloads[guild.id] = payload
@@ -109,7 +116,7 @@ def removeConStr(guild: IGuild, constr: str):
 @bot.command
 async def connect(ctx: Context, connectionString: str):
 	'''Adds a connection to a source server to this channel'''
-	if not await checkPerms(ctx): return False
+	if not await checkPerms(ctx): return
 
 	# Validate the request
 	if data.channelBound(ctx.channel):
@@ -133,7 +140,7 @@ async def connect(ctx: Context, connectionString: str):
 @bot.command
 async def disconnect(ctx: Context):
 	'''Removes this channel's connection to a source server'''
-	if not await checkPerms(ctx): return False
+	if not await checkPerms(ctx): return
 	if not await checkChannelBound(ctx): return
 
 	if data[ctx.channel].relay:
@@ -215,7 +222,7 @@ async def status(ctx: Context):
 		await ctx.reply(f"Connection to server isn't closed internally, however failed to ping the server with exception `{e.message}`")
 		return
 
-	await ctx.message.reply(f"Server online, ping {ping:.0f}. (Note that the ping is from the location of the bot)")
+	await ctx.reply(f"Server online, ping {ping:.0f}. (Note that the ping is from the location of the bot)")
 
 @bot.command
 async def info(ctx: Context, infoName: str = None):
@@ -429,6 +436,68 @@ async def peopleToNotify(ctx: Context):
 	data[ctx.channel].toNotify = validIDs
 	await ctx.reply(msg[:-2])
 
+@bot.command
+async def enableRelay(ctx: Context):
+	'''Enables the relay in this channel'''
+	if not await checkPerms(ctx): return
+	if not await checkChannelBound(ctx): return
+	if not await checkChannelOnline(ctx): return
+
+	if data[ctx.channel].relay:
+		await ctx.reply("The relay is already enabled")
+		return
+
+	if relay.isConStrAdded(data[ctx.channel].constr):
+		await ctx.reply("The relay is already handling this server in another channel, please disable it there first")
+		return
+
+	data[ctx.channel].relay = True
+
+	# Init on relay server
+	setupConStr(ctx.guild, data[ctx.channel].constr)
+
+	await ctx.reply(f"Relay enabled, use `{config.prefix}disableRelay` to disable")
+
+@bot.command
+async def disableRelay(ctx: Context):
+	'''Disables the relay in this channel'''
+	if not await checkPerms(ctx): return
+	if not await checkChannelBound(ctx): return
+
+	if not data[ctx.channel].relay:
+		await ctx.reply("The relay is already disabled")
+		return
+
+	data[ctx.channel].relay = True
+
+	if not data[ctx.channel].isClosed:
+		removeConStr(ctx.guild, data[ctx.channel].constr)
+
+	await ctx.reply(f"Relay disabled, use `{config.prefix}enableRelay` to re-enable")
+
+@bot.command
+async def rcon(ctx: Context):
+	'''
+	Runs a string in the relay client's console  
+	(may not be supported by all clients)
+	'''
+	if not await checkPerms(ctx): return
+	if not await checkChannelBound(ctx): return
+	if not await checkChannelOnline(ctx): return
+
+	if not data[ctx.channel].relay:
+		await ctx.reply("The relay isn't enabled for this server")
+		return
+
+
+	sanetised = ctx.message.content[len(config.prefix + "rcon "):].replace("\n", ";") if ctx.message.content else ""
+	if len(sanetised) == 0:
+		await ctx.reply("No command string specified")
+		return
+
+	relay.addRCON(sanetised, data[ctx.channel].constr)
+	await ctx.reply(f"Command `{sanetised if len(sanetised) < 256 else sanetised[:256] + '...'}` queued")
+
 @bot.loop(60)
 async def pingServer():
 	await bot.waitUntilReady()
@@ -500,9 +569,137 @@ async def pingServer():
 		else:
 			if server.timeSinceDown != -1: server.timeSinceDown = -1
 
+@bot.loop(0.1)
+async def getFromRelay():
+	await bot.waitUntilReady()
+
+	for channelID, server in data:
+		if server.isClosed or not server.relay: continue
+
+		channel = bot.getChannel(channelID)
+		if channel.guild.id not in infoPayloads or server.constr not in infoPayloads[channel.guild.id].constrs: continue
+
+		constring = server.constr
+		msgs = relay.getMessages(constring)
+		for msg in msgs:
+			await channel.send(
+				msg["message"],
+				Masquerade(
+					f"[{msg['teamName']}] {msg['name']}",
+					msg["icon"],
+					Colour(*[int(val) for val in msg["teamColour"].split(",")])
+				)
+			)
+
+		# Handle custom events
+		custom = relay.getCustom(constring)
+		for body in custom:
+			if len(body) == 0 or body.isspace(): continue
+			await channel.send(body)
+
+		# Handle death events
+		deaths = relay.getDeaths(constring)
+		for death in deaths:
+			if death[3] and not death[4]: # suicide with a weapon
+				await channel.send(random.choice(config.messageFormats.suicide).format(victim=death[0], inflictor=death[1]))
+			elif death[3]: # suicide without a weapon
+				await channel.send(random.choice(config.messageFormats.suicideNoWeapon).format(victim=death[0]))
+			elif not death[4]: # kill with a weapon
+				await channel.send(random.choice(config.messageFormats.kill).format(victim=death[0], inflictor=death[1], attacker=death[2]))
+			else: # kill without a weapon
+				await channel.send(random.choice(config.messageFormats.killNoWeapon).format(victim=death[0], attacker=death[2]))
+
+		# Handle join and leave events
+		# (joins first incase someone joins then leaves in the same tenth of a second, so the leave message always comes after the join)
+		joinsAndLeaves = relay.getJoinsAndLeaves(constring)
+
+		for name in joinsAndLeaves[0]:
+			await channel.send(random.choice(config.messageFormats.join).format(player=name))
+		for name in joinsAndLeaves[1]:
+			await channel.send(random.choice(config.messageFormats.leave).format(player=name))
+
 @bot.event
-async def onReady(self) -> None:
-	print("Bot loaded!")
+async def onMessage(msg: IMessage):
+	if (
+		not data.channelBound(msg.channel) or
+		not data[msg.channel].relay or
+		data[msg.channel].isClosed
+	): return
+
+	constring = data[msg.channel].constr
+	if len(msg.content) != 0:
+		relay.addMessage((
+			msg.author.displayName,
+			msg.content,
+			int(msg.author.colour),
+			msg.author.topRole.name,
+			msg.cleanContent
+		), constring)
+
+	for attachment in msg.attachments:
+		relay.addMessage((
+			msg.author.displayName,
+			attachment.url,
+			int(msg.author.colour),
+			msg.author.topRole.name,
+			attachment.url
+		), constring)
+
+# InfoPayload Updaters
+def updatePayloadConStrs(payload: InfoPayload):
+	'''Goes through every constring using this payload and sends them the new data'''
+	for constr in payload.constrs:
+		relay.setInitPayload(constr, payload.encode())
+
+@bot.event
+async def onMemberJoin(member: IUser):
+	infoPayloads[member.guild.id].updateMember(member)
+	updatePayloadConStrs(infoPayloads[member.guild.id])
+
+@bot.event
+async def onMemberLeave(member: IUser):
+	infoPayloads[member.guild.id].removeMember(member)
+	updatePayloadConStrs(infoPayloads[member.guild.id])
+
+@bot.event
+async def onMemberUpdate(member: IUser):
+	infoPayloads[member.guild.id].updateMember(member)
+	updatePayloadConStrs(infoPayloads[member.guild.id])
+
+@bot.event
+async def onGuildRoleCreate(role: IRole):
+	infoPayloads[role.guild.id].updateRole(role)
+	updatePayloadConStrs(infoPayloads[role.guild.id])
+
+@bot.event
+async def onGuildRoleDelete(role: IRole):
+	infoPayloads[role.guild.id].removeRole(role)
+	updatePayloadConStrs(infoPayloads[role.guild.id])
+
+@bot.event
+async def onGuildRoleUpdate(role: IRole):
+	infoPayloads[role.guild.id].updateRole(role)
+	updatePayloadConStrs(infoPayloads[role.guild.id])
+
+@bot.event
+async def onGuildEmojiCreate(emoji: IEmoji):
+	infoPayloads[emoji.guild.id].updateEmoji(emoji)
+	updatePayloadConStrs(infoPayloads[emoji.guild.id])
+
+@bot.event
+async def onGuildEmojiDelete(emoji: IEmoji):
+	infoPayloads[emoji.guild.id].removeEmoji(emoji)
+	updatePayloadConStrs(infoPayloads[emoji.guild.id])
+
+@bot.event
+async def onReady() -> None:
+	for channelID, server in data:
+		if not server.relay: continue
+
+		channel = bot.getChannel(channelID)
+		if not channel: continue
+
+		setupConStr(channel.guild, server.constr)
 
 async def main():
 	await bot.start()

@@ -17,7 +17,7 @@ def compileEmbed(embed: Embed | None) -> discord.Embed | None:
 	compiled = discord.Embed(
 		title=embed.title,
 		description=embed.description,
-		colour=discord.Colour.from_rgb(embed.colour.r, embed.colour.g, embed.colour.b),
+		colour=discord.Colour(int(embed.colour)),
 		url=embed.url
 	)
 
@@ -32,14 +32,17 @@ def compileEmbed(embed: Embed | None) -> discord.Embed | None:
 
 	return compiled
 
+class Guild(IGuild): pass
+
 class User(IUser):
 	_usr: discord.Member
 
-	def __init__(self, member: discord.Member) -> None:
+	def __init__(self, member: discord.Member, guild: Guild) -> None:
 		super().__init__(
+			guild,
 			str(member.id), member.name,
 			str(member.display_avatar), member.nick,
-			[Role(role) for role in member.roles],
+			[Role(role, guild) for role in member.roles],
 			member.bot
 		)
 		self._usr = member
@@ -56,30 +59,13 @@ class User(IUser):
 			return
 		await self._usr.send(f"{masquerade.name} | {content}", embed=compileEmbed(embed))
 
-class Guild(IGuild):
-	_guild: discord.Guild
-
-	def __init__(self, guild: discord.Guild) -> None:
-		super().__init__(
-			str(guild.id), guild.name,
-			[Role(role) for role in guild.roles],
-			[Emoji(emoji) for emoji in guild.emojis],
-			[User(member) for member in guild.members]
-		)
-		self._guild = guild
-
-	async def fetchMember(self, id: str) -> IUser | None:
-		member = await self._guild.fetch_member(int(id))
-		if member: return User(member)
-		return None
-
 class Message(IMessage):
 	_msg: discord.Message
 
-	def __init__(self, msg: discord.Message) -> None:
+	def __init__(self, msg: discord.Message, guild: Guild) -> None:
 		super().__init__(
-			Channel(msg.channel),
-			str(msg.id), User(msg.author),
+			Channel(msg.channel, guild),
+			str(msg.id), User(msg.author, guild),
 			msg.content, msg.clean_content,
 			[str(attachment) for attachment in msg.attachments],
 			[] # TODO: implement embeds
@@ -95,8 +81,8 @@ class Message(IMessage):
 class Channel(IChannel):
 	_chnl: discord.TextChannel
 
-	def __init__(self, channel: discord.TextChannel) -> None:
-		super().__init__(Guild(channel.guild), str(channel.id), channel.name)
+	def __init__(self, channel: discord.TextChannel, guild: Guild) -> None:
+		super().__init__(guild, str(channel.id), channel.name)
 		self._chnl = channel
 
 	async def send(self, content: str | None = None, masquerade: Masquerade | None = None, embed: Embed | None = None) -> None:
@@ -108,19 +94,40 @@ class Channel(IChannel):
 class Role(IRole):
 	_role: discord.Role
 
-	def __init__(self, role: discord.Role) -> None:
-		super().__init__(str(role.id), role.name, Colour(role.colour.r, role.colour.g, role.colour.b))
+	def __init__(self, role: discord.Role, guild: Guild) -> None:
+		super().__init__(
+			guild,
+			str(role.id), role.name,
+			Colour(role.colour.r, role.colour.g, role.colour.b) if role.colour.value else None
+		)
 		self._role = role
 
 class Emoji(IEmoji):
 	_emji: discord.Emoji
 
-	def __init__(self, emoji: discord.Emoji) -> None:
-		super().__init__(str(emoji.id), emoji.name, emoji.url)
+	def __init__(self, emoji: discord.Emoji, guild: Guild) -> None:
+		super().__init__(guild, str(emoji.id), emoji.name, emoji.url)
 		_emji = emoji
 
 	def __str__(self) -> str:
 		return self.url
+
+class Guild(IGuild):
+	_guild: discord.Guild
+
+	def __init__(self, guild: discord.Guild) -> None:
+		super().__init__(
+			str(guild.id), guild.name,
+			[Role(role, self) for role in guild.roles],
+			[Emoji(emoji, self) for emoji in guild.emojis],
+			[User(member, self) for member in guild.members]
+		)
+		self._guild = guild
+
+	async def fetchMember(self, id: str) -> IUser | None:
+		member = await self._guild.fetch_member(int(id))
+		if member: return User(member, self)
+		return None
 
 UNWRAP = {
 	IUser: discord.Member,
@@ -131,12 +138,12 @@ UNWRAP = {
 	Context: commands.Context
 }
 WRAP = {
-	discord.Member: User,
-	discord.Message: Message,
-	discord.TextChannel: Channel,
-	discord.Role: Role,
-	discord.Emoji: Emoji,
-	commands.Context: lambda ctx: Context(Message(ctx.message))
+	discord.Member: lambda raw: User(raw, Guild(raw.guild)),
+	discord.Message: lambda raw: Message(raw, Guild(raw.guild)),
+	discord.TextChannel: lambda raw: Channel(raw, Guild(raw.guild)),
+	discord.Role: lambda raw: Role(raw, Guild(raw.guild)),
+	discord.Emoji: lambda raw: Emoji(raw, Guild(raw.guild)),
+	commands.Context: lambda ctx: Context(Message(ctx.message, Guild(ctx.guild)))
 }
 
 class Bot(IBot):
@@ -154,18 +161,26 @@ class Bot(IBot):
 		@bot.event
 		async def on_ready():
 			await bot.wait_until_ready()
-			if "onReady" in self.events: await self.events["onReady"](self)
+			if "onReady" in self.events: await self.events["onReady"]()
 
 		@bot.event
 		async def on_message(message: discord.Message):
+			await bot.wait_until_ready()
+
 			if not isinstance(message.channel, discord.TextChannel) or not isinstance(message.author, discord.Member): return
 			if message.author.id == self._bot.user.id: return # Don't run on our messages
 
-			if "onMessage" in self.events:
-				await self.events["onMessage"](WRAP[discord.Message](message))
-			
-			ctx = await self._bot.get_context(message)
-			await self._bot.invoke(ctx) # type: ignore
+			cmdEnd = message.content.find(" ")
+			if cmdEnd == -1: cmdEnd = len(message.content)
+
+			if (
+				message.content.startswith(config.prefix) and
+				message.content[len(config.prefix):cmdEnd] in self.commands
+			):
+				ctx = await self._bot.get_context(message)
+				await self._bot.invoke(ctx)
+			elif "onMessage" in self.events:
+				await self.events["onMessage"](Message(message, Guild(message.guild)))
 
 		self._bot = bot
 
@@ -213,4 +228,7 @@ class Bot(IBot):
 		self._bot.command(name=func.__name__)(wrapper)
 
 	def getChannel(self, id: str) -> IChannel:
-		return self._bot.get_channel()
+		channel = self._bot.get_channel(int(id))
+		if channel and not isinstance(channel, discord.TextChannel):
+			raise ValueError("Unsupported channel")
+		return Channel(channel, Guild(channel.guild))

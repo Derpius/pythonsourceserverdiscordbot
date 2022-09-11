@@ -82,22 +82,30 @@ concommand.Add("relay_start", function(plr, cmd, args, argStr)
 			})
 		end)
 
+		local posting, getting = false, false
 		hook.Add("Tick", "Relay.DoHTTP", function()
 			tickTimer = (tickTimer + 1) % relay_interval:GetInt()
-			if tickTimer == 0 and #table.GetKeys(toPost) > 0 then
+			if not posting and tickTimer == 0 and #table.GetKeys(toPost) > 0 then
+				posting = true
+
 				-- POST cached messages to relay server
 				HTTP({
 					method = "POST",
 					url = "http://"..relay_connection:GetString(),
 					body = util.TableToJSON(toPost),
 					type = "application/json",
-					headers = {["Source-Port"] = hostport:GetString()}
+					headers = {["Source-Port"] = hostport:GetString()},
+					success = function() posting = false end,
+					failed = function() posting = false end
 				})
 				toPost = {}
-			elseif tickTimer == math.floor(relay_interval:GetInt() / 2) then
+			elseif not getting and tickTimer == math.floor(relay_interval:GetInt() / 2) then
+				getting = true
+
 				-- GET any available messages from relay server
 				HTTP({
 					success = function(statusCode, content, headers)
+						getting = false
 						if statusCode ~= 200 then return end
 
 						JSON = util.JSONToTable(content)
@@ -124,6 +132,7 @@ concommand.Add("relay_start", function(plr, cmd, args, argStr)
 							game.ConsoleCommand(command.."\n")
 						end
 					end,
+					failed = function() getting = false end,
 					method = "GET",
 					url = "http://"..relay_connection:GetString(),
 					headers = {["Source-Port"] = hostport:GetString()}

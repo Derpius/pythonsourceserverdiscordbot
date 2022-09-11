@@ -1,4 +1,17 @@
 from datetime import timedelta
+from dataclasses import dataclass
+
+@dataclass
+class Colour:
+	r: int
+	g: int
+	b: int
+
+	def __str__(self) -> str:
+		return f"#{self.r:02X}{self.g:02X}{self.b:02X}"
+
+	def __int__(self) -> int:
+		return (self.r << 16) + (self.g << 8) + self.b
 
 def formatTimedelta(delta: timedelta) -> str:
 	'''Utility to convert timedelta to formatted string'''

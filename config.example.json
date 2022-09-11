@@ -3,7 +3,7 @@
 	"backend": "discord",
 	"token": "Bot token here",
 	"prefix": "!",
-	"accent-colour": "#FF7B00",
+	"accent-colour": [255, 150, 0],
 
 	"comment-time-down-before-notify":
 	"Time (in minutes) that a server must be down before notifying members",

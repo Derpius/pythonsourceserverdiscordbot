@@ -1,5 +1,6 @@
 from dataclasses import dataclass, field
 from enum import Enum
+from .utils import Colour
 
 class Backend(Enum):
 	Undefined = -1,
@@ -19,7 +20,7 @@ class MessageFormats:
 class Config:
 	backend: Backend = Backend.Undefined
 	prefix: str = "!"
-	accentColour: str = "#ffffff"
+	accentColour: Colour = field(default_factory=lambda: Colour(255, 255, 255))
 	timeDownBeforeNotify: float = 8080
 	relayPort: int = 8080
 	messageFormats: MessageFormats = MessageFormats()

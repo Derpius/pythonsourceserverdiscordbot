@@ -9,10 +9,10 @@ import time
 
 from sourceserver.exceptions import SourceError
 
-from src.interface import Colour, Context, Embed, IEmoji, IGuild, IMessage, IRole, IUser, Masquerade, Permission
+from src.interface import Context, Embed, IEmoji, IGuild, IMessage, IRole, IUser, Masquerade, Permission
 from src.config import Backend, Config, MessageFormats
 from src.data import Server, Servers
-from src.utils import formatTimedelta
+from src.utils import formatTimedelta, Colour
 from src.relay import Relay
 from src.infopayload import InfoPayload
 
@@ -28,7 +28,7 @@ BACKENDS = {
 token = config["token"]
 config = Config(
 	BACKENDS[config["backend"]] if config["backend"] in BACKENDS else Backend.Undefined,
-	config["prefix"], config["accent-colour"],
+	config["prefix"], Colour(config["accent-colour"][0], config["accent-colour"][1], config["accent-colour"][2]),
 	config["time-down-before-notify"],
 	config["relay-port"],
 	MessageFormats(

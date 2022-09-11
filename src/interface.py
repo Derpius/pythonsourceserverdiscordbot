@@ -4,21 +4,10 @@ from typing import Coroutine
 import inspect
 
 from .config import Config
+from .utils import Colour
 
 class Permission(Enum):
 	ManageGuild = auto()
-
-@dataclass
-class Colour:
-	r: int
-	g: int
-	b: int
-
-	def __str__(self) -> str:
-		return f"#{self.r:02X}{self.g:02X}{self.b:02X}"
-
-	def __int__(self) -> int:
-		return (self.r << 16) + (self.g << 8) + self.b
 
 @dataclass
 class Masquerade:

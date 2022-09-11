@@ -149,7 +149,12 @@ class Role(IRole):
 	_role: revolt.Role
 
 	def __init__(self, role: revolt.Role, guild: Guild) -> None:
-		colour = (int(role.colour[i:i + 2], 16) for i in (0, 2, 4)) if role.colour else (255, 255, 255)
+		colour = role.colour[1:] if role.colour else "ffffff"
+		try:
+			colour = (int(colour[i:(i + 2)], 16) for i in (0, 2, 4))
+		except: # Revolt supports more complex colours than hex which would fail here
+			colour = (255, 255, 255)
+
 		super().__init__(
 			guild,
 			role.id, role.name,

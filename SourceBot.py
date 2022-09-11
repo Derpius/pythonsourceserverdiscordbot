@@ -221,7 +221,7 @@ async def info(ctx: Context, infoName: str = None):
 		return
 
 	if infoName not in info.keys():
-		await ctx.reply(f"'{infoName}' is invalid, see https://github.com/100PXSquared/pythonsourceserver/wiki/SourceServer#the-info-property-values for a list of valid properties")
+		await ctx.reply(f"'{infoName}' is invalid, see <https://github.com/Derpius/pythonsourceserver/wiki/SourceServer#the-info-property-values> for a list of valid properties")
 		return
 
 	await ctx.reply(f"`{infoName}` is `{info[infoName]}`")

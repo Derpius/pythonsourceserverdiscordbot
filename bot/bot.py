@@ -62,8 +62,6 @@ atexit.register(onExit, __file__)
 # Set up intents
 intents = discord.Intents.default()
 intents.members = True
-intents.messages = True
-intents.message_content = True
 
 # Initialise bot
 bot = commands.Bot(PREFIX, case_insensitive=True, intents=intents)

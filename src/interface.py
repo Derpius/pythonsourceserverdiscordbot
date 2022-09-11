@@ -1,6 +1,6 @@
 from dataclasses import dataclass, field
 from enum import Enum, auto
-from typing import Coroutine, List
+from typing import Coroutine
 import inspect
 
 from .config import Config
@@ -9,10 +9,19 @@ class Permission(Enum):
 	ManageGuild = auto()
 
 @dataclass
+class Colour:
+	r: int
+	g: int
+	b: int
+
+	def __str__(self) -> str:
+		return f"#{self.r:02X}{self.g:02X}{self.b:02X}"
+
+@dataclass
 class Masquerade:
 	name: str | None = None
 	avatar: str | None = None
-	colour: str | None = None
+	colour: Colour | None = None
 
 @dataclass
 class EmbedField:
@@ -25,13 +34,18 @@ class Embed:
 	title: str | None = None
 	description: str | None = None
 	icon: str | None = None
-	colour: str | None = None
+	colour: Colour | None = None
 	url: str | None = None
 	footer: str | None = None
-	fields: List[EmbedField] = field(default_factory=lambda: [])
+	fields: list[EmbedField] = field(default_factory=lambda: [])
 
 	def addField(self, name: str, value: str, inline: bool = True):
 		self.fields.append(EmbedField(name, value, inline))
+@dataclass
+class IRole:
+	id: str
+	name: str
+	colour: Colour
 
 @dataclass
 class IUser:
@@ -39,6 +53,7 @@ class IUser:
 	name: str
 	avatar: str
 	nick: str | None
+	roles: list[IRole]
 	bot: bool
 
 	@property
@@ -90,6 +105,15 @@ class IMessage:
 		pass
 
 @dataclass
+class IEmoji:
+	id: str
+	name: str
+	url: str
+	
+	def __str__(self) -> str:
+		return self.url
+
+@dataclass
 class Context:
 	message: IMessage
 
@@ -122,7 +146,7 @@ class IBot:
 		self.config = config
 		self.commands = {}
 		self.events = {}
-		self.loops: List[Loop] = []
+		self.loops: list[Loop] = []
 	
 	async def start(self) -> None:
 		pass

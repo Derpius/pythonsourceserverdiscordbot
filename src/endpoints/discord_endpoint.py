@@ -17,7 +17,7 @@ def compileEmbed(embed: Embed | None) -> discord.Embed | None:
 	compiled = discord.Embed(
 		title=embed.title,
 		description=embed.description,
-		colour=discord.Colour.from_str(embed.colour),
+		colour=discord.Colour.from_rgb(embed.colour.r, embed.colour.g, embed.colour.b),
 		url=embed.url
 	)
 
@@ -36,7 +36,12 @@ class User(IUser):
 	_usr: discord.Member
 
 	def __init__(self, member: discord.Member) -> None:
-		super().__init__(str(member.id), member.name, str(member.display_avatar), member.nick, member.bot)
+		super().__init__(
+			str(member.id), member.name,
+			str(member.display_avatar), member.nick,
+			[Role(role) for role in member.roles],
+			member.bot
+		)
 		self._usr = member
 
 	def __str__(self) -> str:
@@ -95,15 +100,37 @@ class Channel(IChannel):
 			return
 		await self._chnl.send(f"{masquerade.name} | {content}", embed=compileEmbed(embed))
 
+class Role(IRole):
+	_role: discord.Role
+
+	def __init__(self, role: discord.Role) -> None:
+		super().__init__(str(role.id), role.name, Colour(role.colour.r, role.colour.g, role.colour.b))
+		self._role = role
+
+class Emoji(IEmoji):
+	_emji: discord.Emoji
+
+	def __init__(self, emoji: discord.Emoji) -> None:
+		super().__init__(str(emoji.id), emoji.name, emoji.url)
+		_emji = emoji
+
+	def __str__(self) -> str:
+		return self.url
+
 UNWRAP = {
 	IUser: discord.Member,
+	IMessage: discord.Message,
 	IChannel: discord.TextChannel,
+	IRole: discord.Role,
+	IEmoji: discord.Emoji,
 	Context: commands.Context
 }
 WRAP = {
 	discord.Member: User,
 	discord.Message: Message,
 	discord.TextChannel: Channel,
+	discord.Role: Role,
+	discord.Emoji: Emoji,
 	commands.Context: lambda ctx: Context(Message(ctx.message))
 }
 

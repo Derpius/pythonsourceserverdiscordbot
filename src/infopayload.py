@@ -1,5 +1,4 @@
-from discord import Member, Role, Emoji
-from typing import Dict, List, Tuple, Set
+from .interface import IUser, IRole, IEmoji
 import json
 
 class InfoPayload:
@@ -8,67 +7,66 @@ class InfoPayload:
 		self._dirty = False # Determines if the data has been modified for calls to .encode()
 		self._encoded = "" # Cached encoded data
 
-		self.members: Dict[str, dict] = {}
-		self.roles: Dict[str, dict] = {}
-		self.emotes: Dict[str, tuple] = {}
+		self.members: dict[str, dict] = {}
+		self.roles: dict[str, dict] = {}
+		self.emotes: dict[str, dict] = {}
 
-		self.constrs: Set[str] = set()
+		self.constrs: set[str] = set()
 	
-	def updateMember(self, member: Member):
+	def updateMember(self, member: IUser):
 		'''Add or update a member'''
 		self._dirty = True
 
-		self.members[str(member.id)] = {
-			"display-name": member.display_name,
+		self.members[member.id] = {
+			"display-name": member.displayName,
 			"username": member.name,
-			"discriminator": member.discriminator,
-			"avatar": str(member.display_avatar),
-			"roles": [str(role.id) for role in member.roles]
+			"avatar": member.avatar,
+			"roles": [role.id for role in member.roles]
 		}
 	
-	def removeMember(self, member: Member):
+	def removeMember(self, member: IUser):
 		'''Remove a member from the payload'''
 		self._dirty = True
-		del self.members[str(member.id)]
+		del self.members[member.id]
 	
-	def setMembers(self, members: List[Member]):
-		'''Set the members for the server'''
+	def setMembers(self, members: list[IUser]):
+		'''set the members for the server'''
 		self._dirty = True
 
 		self.members = {}
 		for member in members: self.updateMember(member)
 	
-	def updateRole(self, role: Role):
+	def updateRole(self, role: IRole):
 		'''Add or update a role'''
 		self._dirty = True
 
-		self.roles[str(role.id)] = {
+		self.roles[role.id] = {
 			"name": role.name,
-			"colour": role.colour.to_rgb()
+			"colour": (role.colour.r, role.colour.g, role.colour.b)
 		}
 	
-	def removeRole(self, role: Role):
+	def removeRole(self, role: IRole):
 		'''Remove a role from the payload'''
 		self._dirty = True
-		del self.roles[str(role.id)]
+		del self.roles[role.id]
 	
-	def setRoles(self, roles: List[Role]):
-		'''Set the roles for the server'''
+	def setRoles(self, roles: list[IRole]):
+		'''set the roles for the server'''
 		self._dirty = True
 
 		self.roles = {}
 		for role in roles: self.updateRole(role)
 	
 	# Note that emotes have no individual events, so separate update and remove methods are pointless
-	def setEmotes(self, emotes: Tuple[Emoji]):
-		'''Set the emotes for the server'''
+	def setEmotes(self, emotes: tuple[IEmoji]):
+		'''set the emotes for the server'''
 		self._dirty = True
 
 		self.emotes = {}
 		for emote in emotes:
-			self.emotes[str(emote.id)] = {
+			self.emotes[emote.id] = {
 				"name": emote.name,
-				"url": str(emote.url)
+				"url": emote.url
 			}
 	
 	def addConStr(self, constr: str):

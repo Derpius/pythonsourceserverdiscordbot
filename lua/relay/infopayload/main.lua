@@ -1,5 +1,5 @@
 local members, roles, emotes = {}, {}, {}
-local relay_connection, relay_infopayload_chunksize = DiscordRelay.RelayConnection, DiscordRelay.InfoPayloadChunkSize
+local relay_connection, relay_infopayload_chunksize = Relay.RelayConnection, Relay.InfoPayloadChunkSize
 local hostport = GetConVar("hostport")
 
 local string_find, string_lower, string_sub = string.find, string.lower, string.sub
@@ -26,9 +26,11 @@ local json = include("relay/json.lua/json.lua")
 	Netcode
 ]]
 local function decodePayload(payload)
+	Relay.Backend = payload.backend
+
 	members, roles, emotes = {}, {}, {}
 	for id, member in _pairs(payload.members) do
-		members[id] = Member(id, member.username, member["display-name"], member.avatar, member.discriminator, member.roles)
+		members[id] = Member(id, member.username, member["display-name"], member.avatar, member.roles)
 	end
 
 	for id, role in _pairs(payload.roles) do
@@ -50,7 +52,7 @@ if SERVER then
 		if chunkSize == 0 or not chunkSize then _error("Invalid chunk size (change relay_infopayload_chunksize convar)") end
 
 		-- Send header
-		net_Start("DiscordRelay.InfoPayloadHeader")
+		net_Start("Relay.InfoPayloadHeader")
 		net_WriteUInt(math_ceil(#data / chunkSize), 32)
 		if plr then
 			net_Send(plr)
@@ -63,7 +65,7 @@ if SERVER then
 			local packet = string_sub(data, i, i + chunkSize - 1)
 
 			-- Send packet
-			net_Start("DiscordRelay.InfoPayload")
+			net_Start("Relay.InfoPayload")
 			net_WriteUInt(id, 32)
 			net_WriteData(packet)
 			if plr then
@@ -77,7 +79,7 @@ if SERVER then
 	end
 
 	local rawPayload = ""
-	function DiscordRelay.UpdateInfo()
+	function Relay.UpdateInfo()
 		_HTTP({
 			success = function(statusCode, content, headers)
 				if statusCode ~= 200 then return end
@@ -96,18 +98,18 @@ if SERVER then
 	end
 
 	-- Clients will send this whenever they init to request the server's data
-	net_Receive("DiscordRelay.InfoPayload", function(len, plr)
+	net_Receive("Relay.InfoPayload", function(len, plr)
 		stream(rawPayload, plr)
 	end)
 else
 	local streamBuffer, streamLength, streamToReceive = {}, 0, 0
-	net_Receive("DiscordRelay.InfoPayloadHeader", function()
+	net_Receive("Relay.InfoPayloadHeader", function()
 		streamBuffer = {}
 		streamLength = net_ReadUInt(32)
 		streamToReceive = streamLength
 	end)
 
-	net_Receive("DiscordRelay.InfoPayload", function(len)
+	net_Receive("Relay.InfoPayload", function(len)
 		if streamToReceive == 0 then return end -- If this client isn't expecting a packet, drop it
 
 		local id = net_ReadUInt(32)
@@ -125,8 +127,8 @@ else
 	end)
 
 	-- Let the server know we're a new client and should be given a copy of the info payload
-	hook.Add("InitPostEntity", "DiscordRelay.InfoPayloadClientInit", function()
-		net_Start("DiscordRelay.InfoPayload")
+	hook.Add("InitPostEntity", "Relay.InfoPayloadClientInit", function()
+		net_Start("Relay.InfoPayload")
 		net_SendToServer()
 	end)
 end

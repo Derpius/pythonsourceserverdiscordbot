@@ -24,17 +24,17 @@ end
 
 -- Members
 -- Get the entire member table
-function DiscordRelay.GetMembers()
+function Relay.GetMembers()
 	return references.members
 end
 
 -- Get a member by id
-function DiscordRelay.GetMember(id)
+function Relay.GetMember(id)
 	return references.members[id]
 end
 
 -- Get a list of members who match the given name (sorted by importance descending)
-function DiscordRelay.FindMembersByName(name, caseSensitive, noPatterns)
+function Relay.FindMembersByName(name, caseSensitive, noPatterns)
 	if caseSensitive == nil then caseSensitive = false end
 	if noPatterns == nil then noPatterns = true end
 
@@ -63,17 +63,17 @@ end
 
 -- Roles
 -- Get the entire roles table
-function DiscordRelay.GetRoles()
+function Relay.GetRoles()
 	return references.roles
 end
 
 -- Get a role by id
-function DiscordRelay.GetRole(id)
+function Relay.GetRole(id)
 	return references.roles[id]
 end
 
 -- Get a list of roles that match the given name (sorted by importance descending)
-function DiscordRelay.FindRolesByName(name, caseSensitive, noPatterns)
+function Relay.FindRolesByName(name, caseSensitive, noPatterns)
 	if caseSensitive == nil then caseSensitive = false end
 	if noPatterns == nil then noPatterns = true end
 
@@ -89,17 +89,17 @@ end
 
 -- Emotes
 -- Get the entire emote table
-function DiscordRelay.GetEmotes()
+function Relay.GetEmotes()
 	return references.emotes
 end
 
 -- Get an emote by id
-function DiscordRelay.GetEmote(id)
+function Relay.GetEmote(id)
 	return references.emotes[id]
 end
 
 -- Get a list of emotes that match the given name (sorted by importance descending)
-function DiscordRelay.FindEmotesByName(name, caseSensitive, noPatterns)
+function Relay.FindEmotesByName(name, caseSensitive, noPatterns)
 	if caseSensitive == nil then caseSensitive = false end
 	if noPatterns == nil then noPatterns = true end
 

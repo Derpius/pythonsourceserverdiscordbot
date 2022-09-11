@@ -3,12 +3,16 @@ local _setmetatable = setmetatable
 local _ipairs = ipairs
 local _error = error
 
-local getRole = DiscordRelay.GetRole
+local getRole = Relay.GetRole
 
 -- Member
 local memberMeta = {}
 function memberMeta:__tostring()
-	return string_format("<@%s>", self:GetId())
+	return ({
+		[RelayBackends.Undefined] = self:GetDisplayName(),
+		[RelayBackends.Discord] = string_format("<@%s>", self:GetId()),
+		[RelayBackends.Revolt] = string_format("<@%s>", self:GetId())
+	})[Relay.Backend]
 end
 
 function memberMeta:GetId()
@@ -25,14 +29,6 @@ end
 
 function memberMeta:GetAvatar()
 	return self._avatar
-end
-
-function memberMeta:GetDiscriminator()
-	return self._discrim
-end
-
-function memberMeta:GetTag()
-	return string_format("%s#%s", self:GetUsername(), self:GetDiscriminator())
 end
 
 function memberMeta:GetRoles()
@@ -65,7 +61,7 @@ memberMeta.GetColor = memberMeta.GetColour
 memberMeta.__name = "Member"
 memberMeta.__index = memberMeta
 
-function DiscordRelay.Member(id, username, displayName, avatarUrl, discriminator, roles)
+function Relay.Member(id, username, displayName, avatarUrl, roles)
 	local rolesCopy = {}
 	for i, k in _ipairs(roles) do rolesCopy[i] = k end
 
@@ -74,7 +70,6 @@ function DiscordRelay.Member(id, username, displayName, avatarUrl, discriminator
 		_username = username,
 		_displayName = displayName,
 		_avatar = avatarUrl,
-		_discrim = discriminator,
 		_roles = rolesCopy,
 		_numRoles = #rolesCopy
 	}
@@ -86,7 +81,11 @@ end
 -- Role
 local roleMeta = {}
 function roleMeta:__tostring()
-	return string_format("<@&%s>", self:GetId())
+	return ({
+		[RelayBackends.Undefined] = self:GetName(),
+		[RelayBackends.Discord] = string_format("<@&%s>", self:GetId()),
+		[RelayBackends.Revolt] = self:GetName()
+	})[Relay.Backend]
 end
 
 function roleMeta:GetId()
@@ -105,7 +104,7 @@ roleMeta.GetColor = roleMeta.GetColour
 roleMeta.__name = "Role"
 roleMeta.__index = roleMeta
 
-function DiscordRelay.Role(id, name, colour)
+function Relay.Role(id, name, colour)
 	local role = {
 		_id = id,
 		_name = name,
@@ -119,7 +118,11 @@ end
 -- Emote
 local emoteMeta = {}
 function emoteMeta:__tostring()
-	return string_format("<:%s:%s>", self:GetName(), self:GetId())
+	return ({
+		[RelayBackends.Undefined] = self:GetName(),
+		[RelayBackends.Discord] = string_format("<:%s:%s>", self:GetName(), self:GetId()),
+		[RelayBackends.Revolt] = string_format(":%s:", self:GetId())
+	})[Relay.Backend]
 end
 
 function emoteMeta:GetId()
@@ -137,7 +140,7 @@ end
 emoteMeta.__name = "Emote"
 emoteMeta.__index = emoteMeta
 
-function DiscordRelay.Emote(id, name, url)
+function Relay.Emote(id, name, url)
 	local emote = {
 		_id = id,
 		_name = name,
@@ -148,4 +151,4 @@ function DiscordRelay.Emote(id, name, url)
 	return emote
 end
 
-return DiscordRelay.Member, DiscordRelay.Role, DiscordRelay.Emote
+return Relay.Member, Relay.Role, Relay.Emote

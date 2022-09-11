@@ -1,5 +1,5 @@
 local sv_hibernate_think = GetConVar("sv_hibernate_think")
-local relay_connection, relay_interval = DiscordRelay.RelayConnection, DiscordRelay.RelayInterval
+local relay_connection, relay_interval = Relay.RelayConnection, Relay.RelayInterval
 local hostport = GetConVar("hostport")
 
 local toggle = false
@@ -9,7 +9,7 @@ local tickTimer = 0
 
 local gm = gmod.GetGamemode()
 
-function DiscordRelay.CachePost(body)
+function Relay.CachePost(body)
 	local nonce = 1
 	local key = tostring(math.floor(CurTime()))..string.char(nonce)
 
@@ -17,14 +17,14 @@ function DiscordRelay.CachePost(body)
 		key = string.SetChar(key, #key, string.char(nonce))
 		nonce = nonce + 1
 		if nonce > 255 or (nonce > 5 and body.type ~= "message" and body.type ~= "custom") then
-			print("Preventing caching messages to avoid Discord rate limiting due to spam")
+			print("Preventing caching messages to avoid relay rate limiting due to spam")
 			return
 		end
 	end
 
 	toPost[key] = body
 end
-local cachePost = DiscordRelay.CachePost
+local cachePost = Relay.CachePost
 
 local function onChat(plr, msg, teamCht)
 	local teamColour = team.GetColor(plr:Team())
@@ -57,9 +57,9 @@ concommand.Add("relay_start", function(plr, cmd, args, argStr)
 			end
 		end
 
-		hook.Add("PlayerSay", "DiscordRelay.CacheChat", onChat)
-		hook.Add("PlayerInitialSpawn", "DiscordRelay.CacheJoins", function(plr) cachePost({type="join", name=plr:Nick()}) end)
-		hook.Add("PlayerDisconnected", "DiscordRelay.CacheLeaves", function(plr)
+		hook.Add("PlayerSay", "Relay.CacheChat", onChat)
+		hook.Add("PlayerInitialSpawn", "Relay.CacheJoins", function(plr) cachePost({type="join", name=plr:Nick()}) end)
+		hook.Add("PlayerDisconnected", "Relay.CacheLeaves", function(plr)
 			cachePost({type="leave", name=plr:Nick()})
 
 			-- Edge case: if this leave event caused the server to go into hibernation, manually post the cache now
@@ -74,7 +74,7 @@ concommand.Add("relay_start", function(plr, cmd, args, argStr)
 				toPost = {}
 			end
 		end)
-		hook.Add("PlayerDeath", "DiscordRelay.CacheDeaths", function(vic, inf, atk)
+		hook.Add("PlayerDeath", "Relay.CacheDeaths", function(vic, inf, atk)
 			cachePost({
 				type="death",
 				victim=vic:Name(), inflictor=inf.Name and inf:Name() or inf:GetClass(), attacker=atk.Name and atk:Name() or atk:GetClass(),
@@ -82,7 +82,7 @@ concommand.Add("relay_start", function(plr, cmd, args, argStr)
 			})
 		end)
 
-		hook.Add("Tick", "DiscordRelay.DoHTTP", function()
+		hook.Add("Tick", "Relay.DoHTTP", function()
 			tickTimer = (tickTimer + 1) % relay_interval:GetInt()
 			if tickTimer == 0 and #table.GetKeys(toPost) > 0 then
 				-- POST cached messages to relay server
@@ -102,15 +102,15 @@ concommand.Add("relay_start", function(plr, cmd, args, argStr)
 
 						JSON = util.JSONToTable(content)
 
-						if JSON["init-info-dirty"] then DiscordRelay.UpdateInfo() end
+						if JSON["init-info-dirty"] then Relay.UpdateInfo() end
 
 						for _, msg in pairs(JSON.messages.chat) do
-							print("[Discord | "..msg[4].."] " .. msg[1] .. ": " .. msg[2])
+							print("[Relay | "..msg[4].."] " .. msg[1] .. ": " .. msg[2])
 							local colourHex = tonumber(msg[3], 16)
 							local colour = Color(bit.rshift(colourHex, 16), bit.band(bit.rshift(colourHex, 8), 0xff), bit.band(colourHex, 0xff))
 							
-							if hook.Call("DiscordRelay.Message", gm, msg[1], msg[2], colour, msg[4], msg[5]) ~= false then
-								net.Start("DiscordRelay.NetworkMsg")
+							if hook.Call("Relay.Message", gm, msg[1], msg[2], colour, msg[4], msg[5]) ~= false then
+								net.Start("Relay.NetworkMsg")
 									net.WriteString(msg[1])
 									net.WriteString(msg[2])
 									net.WriteColor(colour)
@@ -139,19 +139,19 @@ concommand.Add("relay_start", function(plr, cmd, args, argStr)
 			type = "application/json",
 			headers = {["Source-Port"] = hostport:GetString()}
 		})
-		DiscordRelay.UpdateInfo()
+		Relay.UpdateInfo()
 	end
 end)
 concommand.Add("relay_stop", function(plr, cmd, args, argStr)
 	if not plr:IsPlayer() and toggle then
 		toggle = false
 
-		hook.Remove("PlayerSay", "DiscordRelay.CacheChat")
-		hook.Remove("PlayerInitialSpawn", "DiscordRelay.CacheJoins")
-		hook.Remove("PlayerDisconnected", "DiscordRelay.CacheLeaves")
-		hook.Remove("PlayerDeath", "DiscordRelay.CacheDeaths")
+		hook.Remove("PlayerSay", "Relay.CacheChat")
+		hook.Remove("PlayerInitialSpawn", "Relay.CacheJoins")
+		hook.Remove("PlayerDisconnected", "Relay.CacheLeaves")
+		hook.Remove("PlayerDeath", "Relay.CacheDeaths")
 
-		hook.Remove("Tick", "DiscordRelay.DoHTTP")
+		hook.Remove("Tick", "Relay.DoHTTP")
 
 		print("Relay stopped")
 		cachePost({type="custom", body="Relay client disconnected"})
@@ -168,13 +168,13 @@ concommand.Add("relay_stop", function(plr, cmd, args, argStr)
 	end
 end)
 
-concommand.Add("dsay", function(plr, cmd, args, argStr)
+concommand.Add("rsay", function(plr, cmd, args, argStr)
 	if plr:IsPlayer() then print("Only the server can use this command") end
 	if not toggle then print("Please start the relay with startRelay first"); return end
 
 	cachePost({type="custom", body="[CONSOLE]: "..argStr})
 
-	net.Start("DiscordRelay.DSay")
+	net.Start("Relay.RSay")
 	net.WriteString(argStr)
 	net.Broadcast()
 	print("Console: "..argStr)
@@ -190,4 +190,4 @@ concommand.Add("dsay", function(plr, cmd, args, argStr)
 		})
 		toPost = {}
 	end
-end, nil, "Same as say except sends to Discord too")
+end, nil, "Same as say except sends to relay too")

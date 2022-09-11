@@ -160,6 +160,12 @@ async def retry(ctx: Context):
 			autoclosed.remove(ctx.channel.id)
 
 @bot.command
+async def constring(ctx: Context):
+	'''Prints the current constring of the connected server'''
+	if checkChannelBound(ctx):
+		await ctx.reply(f"`{data[ctx.channel].constr}`")
+
+@bot.command
 async def status(ctx: Context):
 	'''Tells you whether the connection to the server is closed, invalid, or open'''
 	if not await checkChannelBound(ctx): return

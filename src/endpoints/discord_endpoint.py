@@ -176,7 +176,10 @@ class Bot(IBot):
 
 			if (
 				message.content.startswith(config.prefix) and
-				message.content[len(config.prefix):cmdEnd] in self.commands
+				(
+					message.content[len(config.prefix):cmdEnd] in self.commands or
+					message.content[len(config.prefix):cmdEnd] == "help"
+				)
 			):
 				ctx = await self._bot.get_context(message)
 				await self._bot.invoke(ctx)

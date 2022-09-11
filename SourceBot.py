@@ -214,6 +214,17 @@ async def info(ctx: Context, infoName: str = None):
 			embed.footer = "Keywords: " + info["keywords"]
 
 		await ctx.reply(embed=embed)
+		return
+
+	if infoName in ("mode", "witnesses", "duration") and info["game"] != "The Ship":
+		await ctx.reply(f"`{infoName}` is only valid on servers running The Ship")
+		return
+
+	if infoName not in info.keys():
+		await ctx.reply(f"'{infoName}' is invalid, see https://github.com/100PXSquared/pythonsourceserver/wiki/SourceServer#the-info-property-values for a list of valid properties")
+		return
+
+	await ctx.reply(f"`{infoName}` is `{info[infoName]}`")
 
 @bot.command
 async def players(ctx: Context):

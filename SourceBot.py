@@ -468,7 +468,7 @@ async def disableRelay(ctx: Context):
 		await ctx.reply("The relay is already disabled")
 		return
 
-	data[ctx.channel].relay = True
+	data[ctx.channel].relay = False
 
 	if not data[ctx.channel].isClosed:
 		removeConStr(ctx.guild, data[ctx.channel].constr)

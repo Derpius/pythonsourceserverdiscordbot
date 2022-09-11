@@ -1,5 +1,6 @@
 import asyncio
 import re
+from typing import Sequence
 
 import discord
 from discord.ext import commands
@@ -181,6 +182,48 @@ class Bot(IBot):
 				await self._bot.invoke(ctx)
 			elif "onMessage" in self.events:
 				await self.events["onMessage"](Message(message, Guild(message.guild)))
+
+		@bot.event
+		async def on_member_join(member: discord.Member):
+			if "onMemberJoin" in self.events:
+				await self.events["onMemberJoin"](User(member, Guild(member.guild)))
+
+		@bot.event
+		async def on_member_remove(member: discord.Member):
+			if "onMemberLeave" in self.events:
+				await self.events["onMemberLeave"](User(member, Guild(member.guild)))
+
+		@bot.event
+		async def on_member_update(_: discord.Member, member: discord.Member):
+			if "onMemberUpdate" in self.events:
+				await self.events["onMemberUpdate"](User(member, Guild(member.guild)))
+
+		@bot.event
+		async def on_guild_role_create(role: discord.Role):
+			if "onGuildRoleCreate" in self.events:
+				await self.events["onGuildRoleCreate"](Role(role, Guild(role.guild)))
+
+		@bot.event
+		async def on_guild_role_delete(role: discord.Role):
+			if "onGuildRoleDelete" in self.events:
+				await self.events["onGuildRoleDelete"](Role(role, Guild(role.guild)))
+
+		@bot.event
+		async def on_guild_role_update(_: discord.Role, role: discord.Role):
+			if "onGuildRoleUpdate" in self.events:
+				await self.events["onGuildRoleUpdate"](Role(role, Guild(role.guild)))
+
+		@bot.event
+		async def on_guild_emojis_update(guild: discord.Guild, before: Sequence[discord.Emoji], after: Sequence[discord.Emoji]):
+			if "onGuildEmojiCreate" not in self.events and "onGuildEmojiDelete" not in self.events: return
+
+			beforeHash = {emoji.id: emoji for emoji in before}
+			afterHash = {emoji.id: emoji for emoji in after}
+			for id in beforeHash.keys() | afterHash.keys():
+				if id not in beforeHash and "onGuildEmojiCreate" in self.events:
+					await self.events["onGuildEmojiCreate"](Emoji(afterHash[id], Guild(afterHash[id].guild)))
+				elif id not in afterHash and "onGuildEmojiDelete" in self.events:
+					await self.events["onGuildEmojiDelete"](Emoji(beforeHash[id], Guild(beforeHash[id].guild)))
 
 		self._bot = bot
 

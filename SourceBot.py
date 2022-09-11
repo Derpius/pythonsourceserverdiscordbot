@@ -279,7 +279,7 @@ async def players(ctx: Context):
 	await ctx.reply(embed=Embed(title=title, description=body, colour=config.accentColour))
 
 @bot.command
-async def rules(ctx: Context, ruleName: str | None = None):
+async def rules(ctx: Context, ruleName: str = None):
 	'''
 	Gets a rule's value from the server or all if none specified (Discord embed char limit permitting)\n
 	Note, only people with manage server perms can get all rules to reduce spam

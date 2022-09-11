@@ -63,6 +63,12 @@ async def checkChannelBound(ctx: Context) -> bool:
 	await ctx.reply("This channel isn't connected to a server")
 	return False
 
+async def checkChannelOnline(ctx: Context) -> bool:
+	if data[ctx.channel].isClosed:
+		await ctx.reply("Server is closed, please try again later")
+		return False
+	return True
+
 async def checkPerms(ctx: Context) -> bool:
 	if not ctx.author.hasPermission(Permission.ManageGuild):
 		await ctx.reply(f"You don't have permission to run that command {ctx.author}")
@@ -170,6 +176,7 @@ async def constring(ctx: Context):
 async def status(ctx: Context):
 	'''Tells you whether the connection to the server is closed, invalid, or open'''
 	if not await checkChannelBound(ctx): return
+	if not await checkChannelOnline(ctx): return
 
 	ping = None
 	try: ping = data[ctx.channel].ping()
@@ -183,6 +190,7 @@ async def status(ctx: Context):
 async def info(ctx: Context, infoName: str = None):
 	'''Gets server info, all if no name specified\nSee https://github.com/Derpius/pythonsourceserver/wiki/SourceServer#the-info-property-values'''
 	if not await checkChannelBound(ctx): return
+	if not await checkChannelOnline(ctx): return
 
 	try: info = data[ctx.channel].info
 	except SourceError as e:
@@ -230,6 +238,7 @@ async def info(ctx: Context, infoName: str = None):
 async def players(ctx: Context):
 	'''Gets all players on the server'''
 	if not await checkChannelBound(ctx): return
+	if not await checkChannelOnline(ctx): return
 
 	# Get server details
 	try:
@@ -276,6 +285,7 @@ async def rules(ctx: Context, ruleName: str | None = None):
 	Note, only people with manage server perms can get all rules to reduce spam
 	'''
 	if not await checkChannelBound(ctx): return
+	if not await checkChannelOnline(ctx): return
 
 	try: rules = data[ctx.channel].rules
 	except SourceError as e:

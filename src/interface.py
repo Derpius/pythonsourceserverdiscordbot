@@ -1,8 +1,12 @@
 from dataclasses import dataclass
+from enum import Enum, auto
 from typing import Callable, Coroutine, Tuple
 import inspect
 
 from .config import Config
+
+class Permission(Enum):
+	ManageGuild = auto()
 
 @dataclass
 class Masquerade:
@@ -25,8 +29,26 @@ class IUser:
 	avatar: str
 	nick: str | None
 
+	def __str__(self) -> str:
+		return self.id
+
+	def hasPermission(self, permission: Permission) -> bool:
+		pass
+
+	async def send(self, content: str) -> None:
+		pass
+
+@dataclass
+class IGuild:
+	id: str
+	name: str
+
+	async def fetchMember(self, id: str) -> IUser | None:
+		pass
+
 @dataclass
 class IChannel:
+	guild: IGuild
 	id: str
 	name: str
 
@@ -43,6 +65,10 @@ class IMessage:
 	attachments: list[str]
 	embeds: list[IEmbed]
 
+	@property
+	def guild(self) -> IGuild:
+		return self.channel.guild
+
 	async def reply(self, message: str, masquerade: Masquerade | None = None) -> None:
 		pass
 
@@ -51,8 +77,16 @@ class Context:
 	message: IMessage
 
 	@property
+	def guild(self) -> IGuild:
+		return self.message.guild
+
+	@property
 	def channel(self) -> IChannel:
 		return self.message.channel
+
+	@property
+	def author(self) -> IUser:
+		return self.message.author
 
 	async def send(self, message: str, masquerade: Masquerade | None = None) -> None:
 		await self.channel.send(message, masquerade)

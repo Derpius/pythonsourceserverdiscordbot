@@ -133,3 +133,6 @@ dmypy.json
 
 # User defined config
 config.json
+
+# Bot data
+data.json

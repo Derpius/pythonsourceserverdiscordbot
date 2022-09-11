@@ -7,13 +7,48 @@ from discord.ext import commands
 from ..interface import *
 from ..config import Config
 
-@dataclass
+PERMISSION_WRAPPERS = {
+	Permission.ManageGuild: lambda perms: perms.manage_guild
+}
+
 class User(IUser):
 	_usr: discord.Member
 
-@dataclass
+	def __init__(self, member: discord.Member) -> None:
+		super().__init__(str(member.id), member.name, str(member.display_avatar), member.nick)
+		self._usr = member
+
+	def __str__(self) -> str:
+		return f"<@{self.id}>"
+
+	def hasPermission(self, permission: Permission) -> bool:
+		return PERMISSION_WRAPPERS[permission](self._usr.guild_permissions)
+	
+	async def send(self, content: str) -> None:
+		return await self._usr.send(content)
+
+class Guild(IGuild):
+	_guild: discord.Guild
+
+	def __init__(self, guild: discord.Guild) -> None:
+		super().__init__(str(guild.id), guild.name)
+		self._guild = guild
+
+	async def fetchMember(self, id: str) -> IUser | None:
+		return await self._guild.fetch_member(int(id))
+
 class Message(IMessage):
 	_msg: discord.Message
+
+	def __init__(self, msg: discord.Message) -> None:
+		super().__init__(
+			Channel(msg.channel),
+			str(msg.id), User(msg.author),
+			msg.content, msg.clean_content,
+			[str(attachment) for attachment in msg.attachments],
+			[] # TODO: implement embeds
+		)
+		self._msg = msg
 
 	async def reply(self, message: str, masquerade: Masquerade | None = None) -> None:
 		if masquerade is None or masquerade.name is None:
@@ -21,9 +56,12 @@ class Message(IMessage):
 			return
 		await self._msg.reply(f"{masquerade.name} | {message}")
 
-@dataclass
 class Channel(IChannel):
 	_chnl: discord.TextChannel
+
+	def __init__(self, channel: discord.TextChannel) -> None:
+		super().__init__(Guild(channel.guild), str(channel.id), channel.name)
+		self._chnl = channel
 
 	async def send(self, message: str, masquerade: Masquerade | None = None) -> None:
 		if masquerade is None or masquerade.name is None:
@@ -37,40 +75,10 @@ UNWRAP = {
 	Context: commands.Context
 }
 WRAP = {
-	discord.Member: lambda member: User(member.id, member.name, str(member.display_avatar), member.nick, member),
-	discord.Message: lambda message: Message(
-		Channel(message.channel.id, message.channel.name, message.channel),
-		message.id,
-		User(
-			message.author.id,
-			message.author.name,
-			str(message.author.display_avatar),
-			message.author.nick,
-			message.author
-		),
-		message.content,
-		message.clean_content,
-		[attachment.url for attachment in message.attachments],
-		[], # TODO: embed support
-		message
-	),
-	discord.TextChannel: lambda channel: Channel(channel.id, channel.name, channel),
-	commands.Context: lambda ctx: Context(Message(
-		Channel(ctx.channel.id, ctx.channel.name, ctx.channel),
-		ctx.message.id,
-		User(
-			ctx.message.author.id,
-			ctx.message.author.name,
-			str(ctx.message.author.display_avatar),
-			ctx.message.author.nick,
-			ctx.message.author
-		),
-		ctx.message.content,
-		ctx.message.clean_content,
-		[attachment.url for attachment in ctx.message.attachments],
-		[], # TODO: embed support
-		ctx.message
-	))
+	discord.Member: User,
+	discord.Message: Message,
+	discord.TextChannel: Channel,
+	commands.Context: lambda ctx: Context(Message(ctx.message))
 }
 
 class Bot(IBot):

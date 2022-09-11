@@ -1,4 +1,3 @@
-from dataclasses import dataclass
 import re
 
 import discord
@@ -10,6 +9,27 @@ from ..config import Config
 PERMISSION_WRAPPERS = {
 	Permission.ManageGuild: lambda perms: perms.manage_guild
 }
+
+def compileEmbed(embed: Embed | None) -> discord.Embed | None:
+	if not embed: return None
+
+	compiled = discord.Embed(
+		title=embed.title,
+		description=embed.description,
+		colour=discord.Colour.from_str(embed.colour),
+		url=embed.url
+	)
+
+	if embed.footer:
+		compiled.set_footer(text=embed.footer)
+	if embed.icon:
+		compiled.set_thumbnail(url=embed.icon)
+	
+	if embed.fields:
+		for field in embed.fields:
+			compiled.add_field(name=field.name, value=field.value, inline=field.inline)
+
+	return compiled
 
 class User(IUser):
 	_usr: discord.Member
@@ -24,8 +44,11 @@ class User(IUser):
 	def hasPermission(self, permission: Permission) -> bool:
 		return PERMISSION_WRAPPERS[permission](self._usr.guild_permissions)
 	
-	async def send(self, content: str) -> None:
-		return await self._usr.send(content)
+	async def send(self, content: str | None = None, masquerade: Masquerade | None = None, embed: Embed | None = None) -> None:
+		if masquerade is None or masquerade.name is None:
+			await self._usr.send(content, embed=compileEmbed(embed))
+			return
+		await self._usr.send(f"{masquerade.name} | {content}", embed=compileEmbed(embed))
 
 class Guild(IGuild):
 	_guild: discord.Guild
@@ -50,11 +73,11 @@ class Message(IMessage):
 		)
 		self._msg = msg
 
-	async def reply(self, message: str, masquerade: Masquerade | None = None) -> None:
+	async def reply(self, content: str | None = None, masquerade: Masquerade | None = None, embed: Embed | None = None) -> None:
 		if masquerade is None or masquerade.name is None:
-			await self._msg.reply(message)
+			await self._msg.reply(content, embed=compileEmbed(embed))
 			return
-		await self._msg.reply(f"{masquerade.name} | {message}")
+		await self._msg.reply(f"{masquerade.name} | {content}", embed=compileEmbed(embed))
 
 class Channel(IChannel):
 	_chnl: discord.TextChannel
@@ -63,11 +86,11 @@ class Channel(IChannel):
 		super().__init__(Guild(channel.guild), str(channel.id), channel.name)
 		self._chnl = channel
 
-	async def send(self, message: str, masquerade: Masquerade | None = None) -> None:
+	async def send(self, content: str | None = None, masquerade: Masquerade | None = None, embed: Embed | None = None) -> None:
 		if masquerade is None or masquerade.name is None:
-			await self._chnl.send(message)
+			await self._chnl.send(content, embed=compileEmbed(embed))
 			return
-		await self._chnl.send(f"{masquerade.name} | {message}")
+		await self._chnl.send(f"{masquerade.name} | {content}", embed=compileEmbed(embed))
 
 UNWRAP = {
 	IUser: discord.Member,

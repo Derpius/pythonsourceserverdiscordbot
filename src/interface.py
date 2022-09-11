@@ -1,6 +1,6 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from enum import Enum, auto
-from typing import Callable, Coroutine, Tuple
+from typing import Coroutine, List
 import inspect
 
 from .config import Config
@@ -15,12 +15,23 @@ class Masquerade:
 	colour: str | None = None
 
 @dataclass
-class IEmbed:
-	title: str
-	description: str
-	icon: str
-	colour: str
-	url: str
+class EmbedField:
+	name: str
+	value: str
+	inline: bool = True
+
+@dataclass
+class Embed:
+	title: str | None = None
+	description: str | None = None
+	icon: str | None = None
+	colour: str | None = None
+	url: str | None = None
+	footer: str | None = None
+	fields: List[EmbedField] = field(default_factory=lambda: [])
+
+	def addField(self, name: str, value: str, inline: bool = True):
+		self.fields.append(EmbedField(name, value, inline))
 
 @dataclass
 class IUser:
@@ -35,7 +46,7 @@ class IUser:
 	def hasPermission(self, permission: Permission) -> bool:
 		pass
 
-	async def send(self, content: str) -> None:
+	async def send(self, content: str | None = None, masquerade: Masquerade | None = None, embed: Embed | None = None) -> None:
 		pass
 
 @dataclass
@@ -52,7 +63,7 @@ class IChannel:
 	id: str
 	name: str
 
-	async def send(self, message: str, masquerade: Masquerade | None = None) -> None:
+	async def send(self, content: str | None = None, masquerade: Masquerade | None = None, embed: Embed | None = None) -> None:
 		pass
 
 @dataclass
@@ -63,13 +74,13 @@ class IMessage:
 	content: str | None
 	cleanContent: str | None
 	attachments: list[str]
-	embeds: list[IEmbed]
+	embeds: list[Embed]
 
 	@property
 	def guild(self) -> IGuild:
 		return self.channel.guild
 
-	async def reply(self, message: str, masquerade: Masquerade | None = None) -> None:
+	async def reply(self, content: str | None = None, masquerade: Masquerade | None = None, embed: Embed | None = None) -> None:
 		pass
 
 @dataclass
@@ -88,11 +99,11 @@ class Context:
 	def author(self) -> IUser:
 		return self.message.author
 
-	async def send(self, message: str, masquerade: Masquerade | None = None) -> None:
-		await self.channel.send(message, masquerade)
+	async def send(self, content: str | None = None, masquerade: Masquerade | None = None, embed: Embed | None = None) -> None:
+		await self.channel.send(content, masquerade, embed)
 
-	async def reply(self, message: str, masquerade: Masquerade | None = None) -> None:
-		await self.message.reply(message, masquerade)
+	async def reply(self, content: str | None = None, masquerade: Masquerade | None = None, embed: Embed | None = None) -> None:
+		await self.message.reply(content, masquerade, embed)
 
 class IBot:
 	def __init__(self, token: str, config: Config) -> None:

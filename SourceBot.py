@@ -157,7 +157,7 @@ async def retry(ctx: Context):
 				''')
 
 			data[ctx.channel].toNotify = validIDs
-			self.autoclosed.remove(ctx.channel.id)
+			autoclosed.remove(ctx.channel.id)
 
 @bot.command
 async def status(ctx: Context):

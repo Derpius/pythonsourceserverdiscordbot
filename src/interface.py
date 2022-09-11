@@ -68,19 +68,6 @@ class IUser:
 		if self.nick: return self.nick
 		return self.name
 
-	@property
-	def colour(self) -> Colour:
-		roles = self.roles[1:] # remove @everyone
-
-		for role in reversed(roles):
-			if role.colour:
-				return role.colour
-		return Colour(255, 255, 255)
-
-	@property
-	def topRole(self) -> IRole:
-		return self.roles[-1]
-
 	def __str__(self) -> str:
 		return self.id
 
@@ -173,10 +160,7 @@ class IBot:
 
 	def command(self, func: Coroutine) -> None:
 		if func.__name__ in self.commands: raise ValueError("Command already registered")
-		self.commands[func.__name__] = {
-			"func": func,
-			"help": func.__doc__
-		}
+		self.commands[func.__name__] = func
 	
 	def event(self, func: Coroutine) -> None:
 		if func.__name__ in self.events: raise ValueError("Event already registered")

@@ -572,7 +572,6 @@ async def pingServer():
 @bot.loop(0.1)
 async def getFromRelay():
 	await bot.waitUntilReady()
-
 	for channelID, server in data:
 		if server.isClosed or not server.relay: continue
 
@@ -639,10 +638,10 @@ async def onMessage(msg: IMessage):
 	for attachment in msg.attachments:
 		relay.addMessage((
 			msg.author.displayName,
-			attachment.url,
+			attachment,
 			int(msg.author.colour),
 			msg.author.topRole.name,
-			attachment.url
+			attachment
 		), constring)
 
 # InfoPayload Updaters

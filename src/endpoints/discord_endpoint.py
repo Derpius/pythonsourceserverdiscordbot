@@ -1,5 +1,4 @@
 import asyncio
-import re
 from typing import Sequence
 
 import discord
@@ -50,6 +49,19 @@ class User(IUser):
 
 	def __str__(self) -> str:
 		return f"<@{self.id}>"
+
+	@property
+	def colour(self) -> Colour:
+		roles = self.roles[1:] # remove @everyone
+
+		for role in reversed(roles):
+			if role.colour:
+				return role.colour
+		return Colour(255, 255, 255)
+
+	@property
+	def topRole(self) -> IRole:
+		return self.roles[-1]
 
 	def hasPermission(self, permission: Permission) -> bool:
 		return PERMISSION_WRAPPERS[permission](self._usr.guild_permissions)
@@ -161,7 +173,6 @@ class Bot(IBot):
 
 		@bot.event
 		async def on_ready():
-			await bot.wait_until_ready()
 			if "onReady" in self.events: await self.events["onReady"]()
 
 		@bot.event

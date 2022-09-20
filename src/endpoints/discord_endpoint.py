@@ -159,6 +159,13 @@ WRAP = {
 	commands.Context: lambda ctx: Context(Message(ctx.message, Guild(ctx.guild)))
 }
 
+def wrapLoop(loop):
+	async def wrapper():
+		while True:
+			await loop.func()
+			await asyncio.sleep(loop.interval)
+	return wrapper
+
 class Bot(IBot):
 	def __init__(self, token: str, config: Config) -> None:
 		super().__init__(token, config)
@@ -243,11 +250,7 @@ class Bot(IBot):
 
 	async def start(self) -> None:
 		for loop in self.loops:
-			async def loopWrapper():
-				while True:
-					await loop.func()
-					await asyncio.sleep(loop.interval)
-			asyncio.create_task(loopWrapper())
+			asyncio.create_task(wrapLoop(loop)())
 
 		await self._bot.start(self.token)
 

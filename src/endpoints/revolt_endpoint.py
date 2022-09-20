@@ -151,7 +151,11 @@ class Role(IRole):
 	def __init__(self, role: revolt.Role, guild: Guild) -> None:
 		colour = role.colour[1:] if role.colour else "ffffff"
 		try:
-			colour = (int(colour[i:(i + 2)], 16) for i in (0, 2, 4))
+			colour = (
+				int(colour[:2], 16),
+				int(colour[2:4], 16),
+				int(colour[4:6], 16)
+			)
 		except: # Revolt supports more complex colours than hex which would fail here
 			colour = (255, 255, 255)
 
@@ -280,7 +284,6 @@ class BotImpl(commands.CommandsClient):
 
 def wrap(func: Callable) -> Coroutine:
 	async def wrapper(self: BotImpl, ctx: commands.Context, *args):
-		print(ctx.args)
 		if (
 			not isinstance(ctx.channel, revolt.TextChannel) or
 			not isinstance(ctx.message, revolt.Message) or
@@ -308,17 +311,20 @@ def wrap(func: Callable) -> Coroutine:
 
 	return wrapper
 
+def wrapLoop(loop):
+	async def wrapper():
+		while True:
+			await loop.func()
+			await asyncio.sleep(loop.interval)
+	return wrapper
+
 class Bot(IBot):
 	def __init__(self, token: str, config: Config) -> None:
 		super().__init__(token, config)
 
 	async def start(self) -> None:
 		for loop in self.loops:
-			async def loopWrapper():
-				while True:
-					await loop.func()
-					await asyncio.sleep(loop.interval)
-			asyncio.create_task(loopWrapper())
+			asyncio.create_task(wrapLoop(loop)())
 
 		async with aiohttp.ClientSession() as session:
 			self._bot = BotImpl(self, session, self.token, case_insensitive=True)

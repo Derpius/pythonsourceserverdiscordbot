@@ -24,3 +24,4 @@ class Config:
 	timeDownBeforeNotify: float = 8080
 	relayPort: int = 8080
 	messageFormats: MessageFormats = MessageFormats()
+	restartCommand: str = "echo 'change restart-command in your config.json' > changeme.txt"

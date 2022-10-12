@@ -35,7 +35,8 @@ config = Config(
 		config["message-formats"]["join"], config["message-formats"]["leave"],
 		config["message-formats"]["suicide"], config["message-formats"]["suicide-no-weapon"],
 		config["message-formats"]["kill"], config["message-formats"]["kill-no-weapon"]
-	)
+	),
+	config["restart-command"]
 )
 
 if config.backend == Backend.Discord:
@@ -92,7 +93,7 @@ def getGuildInfo(guild: IGuild) -> InfoPayload:
 	if guild.id not in infoPayloads:
 		# Create an info payload for this guild if none exists
 		payload = InfoPayload(config.backend)
-		
+
 		payload.setRoles(guild.roles)
 		payload.setEmojis(guild.emojis)
 		payload.setMembers(guild.members)
@@ -181,7 +182,7 @@ async def retry(ctx: Context):
 	else:
 		if data[ctx.channel]:
 			setupConStr(ctx.guild, data[ctx.channel].constr)
-		
+
 		data[ctx.channel].timeSinceDown = -1
 		await ctx.reply("Successfully reconnected to server!")
 
@@ -298,7 +299,7 @@ async def players(ctx: Context):
 
 	# Truncate title if needed
 	if len(title) > 256: title = title[:253] + "..."
-	
+
 	# Body
 	body = ""
 	for player in plrs:
@@ -309,7 +310,7 @@ async def players(ctx: Context):
 			body += f"Score: {player[2]} | Time on server: {formatTimedelta(timedelta(seconds=player[3]))}\n\n"
 		else:
 			body += f"Score: {player[2]} | Deaths: {player[4]} | Money: {player[5]}\n\n"
-	
+
 	# Truncate body if needed (may be replaced with a page system in future)
 	if len(body) > 4096: body = body[:4093] + "..."
 
@@ -368,7 +369,7 @@ async def rules(ctx: Context, ruleName: str = None):
 @bot.command
 async def notify(ctx: Context, target: IUser = None):
 	'''
-	Tells the bot to notify you or a person of your choice regarding server outage (loss of server connection, and reconnection to a dropped server).  
+	Tells the bot to notify you or a person of your choice regarding server outage (loss of server connection, and reconnection to a dropped server).
 	Passing a person without you having manage server perms is not allowed (unless that person is yourself).
 	'''
 	if not await checkChannelBound(ctx): return
@@ -391,7 +392,7 @@ async def notify(ctx: Context, target: IUser = None):
 @bot.command
 async def dontNotify(ctx: Context, target: IUser = None):
 	'''
-	Tells the bot to stop notifying you or a person of your choice regarding server outage (loss of server connection, and reconnection to a dropped server).  
+	Tells the bot to stop notifying you or a person of your choice regarding server outage (loss of server connection, and reconnection to a dropped server).
 	Passing a person without you having manage server perms is not allowed (unless that person is yourself).
 	'''
 	if not await checkChannelBound(ctx): return
@@ -478,7 +479,7 @@ async def disableRelay(ctx: Context):
 @bot.command
 async def rcon(ctx: Context):
 	'''
-	Runs a string in the relay client's console  
+	Runs a string in the relay client's console
 	(may not be supported by all clients)
 	'''
 	if not await checkPerms(ctx): return
@@ -497,6 +498,21 @@ async def rcon(ctx: Context):
 
 	relay.addRCON(sanetised, data[ctx.channel].constr)
 	await ctx.reply(f"Command `{sanetised if len(sanetised) < 256 else sanetised[:256] + '...'}` queued")
+
+@bot.command
+async def restart(ctx: Context):
+	'''
+	Attempts to restart the gmod server by sending a command to
+	the box running the server which can be defined in the config
+	'''
+	if not await checkPerms(ctx): return
+	if not await checkChannelBound(ctx): return
+
+	if not data[ctx.channel].relay:
+		await ctx.reply("The relay isn't enabled for this server")
+		return
+
+	os.system(config.restartCommand)
 
 @bot.loop(60)
 async def pingServer():

@@ -34,5 +34,7 @@
 		"kill-no-weapon": [
 			"`{attacker}` killed `{victim}`"
 		]
-	}
+	},
+
+	"restart-command": "echo 'change restart-command in your config.json' > changeme.txt"
 }

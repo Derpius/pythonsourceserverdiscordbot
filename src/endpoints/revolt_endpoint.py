@@ -105,6 +105,7 @@ class User(IUser):
 			masquerade=revolt.Masquerade(masquerade.name, masquerade.avatar, str(masquerade.colour))
 		)
 
+class Message(IMessage): pass
 class Message(IMessage):
 	_msg: revolt.Message
 
@@ -118,15 +119,17 @@ class Message(IMessage):
 		)
 		self._msg = msg
 
-	async def reply(self, content: str | None = None, masquerade: Masquerade | None = None, embed: Embed | None = None) -> None:
+	async def reply(self, content: str | None = None, masquerade: Masquerade | None = None, embed: Embed | None = None) -> Message:
 		if masquerade is None or masquerade.name is None:
-			await self._msg.reply(content, embed=compileEmbed(embed))
-			return
-		await self._msg.reply(
+			return Message(await self._msg.reply(content, embed=compileEmbed(embed)), self.guild)
+		return Message(await self._msg.reply(
 			content,
 			embed=compileEmbed(embed),
 			masquerade=revolt.Masquerade(masquerade.name, masquerade.avatar, str(masquerade.colour))
-		)
+		), self.guild)
+
+	async def edit(self, content: str | None = None, masquerade: Masquerade | None = None, embed: Embed | None = None) -> None:
+		await self._msg.edit(content, [compileEmbed(embed),])
 
 class Channel(IChannel):
 	_chnl: revolt.TextChannel
@@ -135,15 +138,14 @@ class Channel(IChannel):
 		super().__init__(guild, channel.id, channel.name)
 		self._chnl = channel
 
-	async def send(self, content: str | None = None, masquerade: Masquerade | None = None, embed: Embed | None = None) -> None:
+	async def send(self, content: str | None = None, masquerade: Masquerade | None = None, embed: Embed | None = None) -> Message:
 		if masquerade is None or masquerade.name is None:
-			await self._chnl.send(content, embed=compileEmbed(embed))
-			return
-		await self._chnl.send(
+			return Message(await self._chnl.send(content, embed=compileEmbed(embed)), self.guild)
+		return Message(await self._chnl.send(
 			content,
 			embed=compileEmbed(embed),
 			masquerade=revolt.Masquerade(masquerade.name, masquerade.avatar, str(masquerade.colour))
-		)
+		), self.guild)
 
 class Role(IRole):
 	_role: revolt.Role

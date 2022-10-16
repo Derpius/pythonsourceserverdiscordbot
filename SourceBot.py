@@ -526,8 +526,8 @@ async def restart(ctx: Context, configure: str = None):
 		await ctx.reply(f"A restart command is not configured for this channel, use `{config.prefix}restart configure [command]` to set one up")
 		return
 
-	await ctx.reply("Running restart command...")
-	result = subprocess.run(restartCmd, shell=True, capture_output=True, encoding="utf-8")
+	msg = await ctx.reply("Running restart command...")
+	result = subprocess.run(restartCmd, shell=True, capture_output=True, encoding="ansi")
 
 	output = "No output"
 	if result.stdout:
@@ -535,7 +535,7 @@ async def restart(ctx: Context, configure: str = None):
 	elif result.stderr:
 		output = result.stderr
 
-	await ctx.reply("```ansi\n" + output + "\n```")
+	await msg.edit("```ansi\n" + output + "\n```")
 
 @bot.loop(60)
 async def pingServer():

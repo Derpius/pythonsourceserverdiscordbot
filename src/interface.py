@@ -89,13 +89,15 @@ class IGuild:
 	async def fetchMember(self, id: str) -> IUser | None:
 		pass
 
+class IMessage: pass
+
 @dataclass
 class IChannel:
 	guild: IGuild
 	id: str
 	name: str
 
-	async def send(self, content: str | None = None, masquerade: Masquerade | None = None, embed: Embed | None = None) -> None:
+	async def send(self, content: str | None = None, masquerade: Masquerade | None = None, embed: Embed | None = None) -> IMessage:
 		pass
 
 @dataclass
@@ -112,7 +114,10 @@ class IMessage:
 	def guild(self) -> IGuild:
 		return self.channel.guild
 
-	async def reply(self, content: str | None = None, masquerade: Masquerade | None = None, embed: Embed | None = None) -> None:
+	async def reply(self, content: str | None = None, masquerade: Masquerade | None = None, embed: Embed | None = None) -> IMessage:
+		pass
+
+	async def edit(self, content: str | None = None, masquerade: Masquerade | None = None, embed: Embed | None = None) -> None:
 		pass
 
 @dataclass
@@ -131,11 +136,11 @@ class Context:
 	def author(self) -> IUser:
 		return self.message.author
 
-	async def send(self, content: str | None = None, masquerade: Masquerade | None = None, embed: Embed | None = None) -> None:
-		await self.channel.send(content, masquerade, embed)
+	async def send(self, content: str | None = None, masquerade: Masquerade | None = None, embed: Embed | None = None) -> IMessage:
+		return await self.channel.send(content, masquerade, embed)
 
-	async def reply(self, content: str | None = None, masquerade: Masquerade | None = None, embed: Embed | None = None) -> None:
-		await self.message.reply(content, masquerade, embed)
+	async def reply(self, content: str | None = None, masquerade: Masquerade | None = None, embed: Embed | None = None) -> IMessage:
+		return await self.message.reply(content, masquerade, embed)
 
 @dataclass
 class Loop:

@@ -72,6 +72,7 @@ class User(IUser):
 			return
 		await self._usr.send(f"{masquerade.name} | {content}", embed=compileEmbed(embed))
 
+class Message(IMessage): pass
 class Message(IMessage):
 	_msg: discord.Message
 
@@ -85,11 +86,16 @@ class Message(IMessage):
 		)
 		self._msg = msg
 
-	async def reply(self, content: str | None = None, masquerade: Masquerade | None = None, embed: Embed | None = None) -> None:
+	async def reply(self, content: str | None = None, masquerade: Masquerade | None = None, embed: Embed | None = None) -> Message:
 		if masquerade is None or masquerade.name is None:
-			await self._msg.reply(content, embed=compileEmbed(embed))
+			return Message(await self._msg.reply(content, embed=compileEmbed(embed)), self.guild)
+		return Message(await self._msg.reply(f"{masquerade.name} | {content}", embed=compileEmbed(embed)), self.guild)
+
+	async def edit(self, content: str | None = None, masquerade: Masquerade | None = None, embed: Embed | None = None) -> None:
+		if masquerade is None or masquerade.name is None:
+			await self._msg.edit(content=content, embed=compileEmbed(embed))
 			return
-		await self._msg.reply(f"{masquerade.name} | {content}", embed=compileEmbed(embed))
+		await self._msg.edit(content=f"{masquerade.name} | {content}", embed=compileEmbed(embed))
 
 class Channel(IChannel):
 	_chnl: discord.TextChannel
@@ -98,11 +104,10 @@ class Channel(IChannel):
 		super().__init__(guild, str(channel.id), channel.name)
 		self._chnl = channel
 
-	async def send(self, content: str | None = None, masquerade: Masquerade | None = None, embed: Embed | None = None) -> None:
+	async def send(self, content: str | None = None, masquerade: Masquerade | None = None, embed: Embed | None = None) -> Message:
 		if masquerade is None or masquerade.name is None:
-			await self._chnl.send(content, embed=compileEmbed(embed))
-			return
-		await self._chnl.send(f"{masquerade.name} | {content}", embed=compileEmbed(embed))
+			return Message(await self._chnl.send(content, embed=compileEmbed(embed)), self.guild)
+		return Message(await self._chnl.send(f"{masquerade.name} | {content}", embed=compileEmbed(embed)), self.guild)
 
 class Role(IRole):
 	_role: discord.Role

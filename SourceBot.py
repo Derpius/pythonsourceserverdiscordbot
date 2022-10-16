@@ -527,7 +527,14 @@ async def restart(ctx: Context, configure: str = None):
 		return
 
 	result = subprocess.run(restartCmd, shell=True, capture_output=True, encoding="utf-8")
-	await ctx.reply(result.stdout)
+
+	output = "No output"
+	if result.stdout:
+		output = result.stdout
+	elif result.stderr:
+		output = result.stderr
+
+	await ctx.reply("```ansi\n" + output + "\n```")
 
 @bot.loop(60)
 async def pingServer():

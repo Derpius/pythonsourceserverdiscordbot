@@ -133,7 +133,8 @@ class Guild(IGuild):
 			str(guild.id), guild.name,
 			[Role(role, self) for role in guild.roles],
 			[Emoji(emoji, self) for emoji in guild.emojis],
-			[User(member, self) for member in guild.members]
+			[User(member, self) for member in guild.members],
+			User(guild.owner, self) if guild.owner else None
 		)
 		self._guild = guild
 

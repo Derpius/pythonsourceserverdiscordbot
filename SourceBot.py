@@ -1,11 +1,10 @@
 import asyncio
-from calendar import c
 from datetime import timedelta
 import os
 import atexit
 import json
 import random
-import time
+import subprocess
 
 from sourceserver.exceptions import SourceError
 
@@ -497,6 +496,38 @@ async def rcon(ctx: Context):
 
 	relay.addRCON(sanetised, data[ctx.channel].constr)
 	await ctx.reply(f"Command `{sanetised if len(sanetised) < 256 else sanetised[:256] + '...'}` queued")
+
+@bot.command
+async def restart(ctx: Context, configure: str = None):
+	'''
+	Runs a configurable shell command to restart the server
+	'''
+	if not await checkPerms(ctx): return
+	if not await checkChannelBound(ctx): return
+
+	if configure == "configure":
+		if ctx.author.id != ctx.guild.owner.id:
+			await ctx.reply("Due to the security risks of executing arbitrary shell commands, only the owner of this server may configure it")
+			return
+
+		command = ctx.message.cleanContent[len(config.prefix) + len("restart configure"):]
+		command = command.strip()
+
+		if not command:
+			await ctx.reply("No command specified")
+			return
+
+		data[ctx.channel].restartCmd = command.strip()
+		await ctx.reply("Restart command set")
+		return
+
+	restartCmd = data[ctx.channel].restartCmd
+	if not restartCmd:
+		await ctx.reply(f"A restart command is not configured for this channel, use `{config.prefix}restart configure [command]` to set one up")
+		return
+
+	result = subprocess.run(restartCmd, shell=True, capture_output=True, encoding="utf-8")
+	await ctx.reply(result.stdout)
 
 @bot.loop(60)
 async def pingServer():

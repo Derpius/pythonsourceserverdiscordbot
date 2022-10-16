@@ -84,6 +84,7 @@ class IGuild:
 	roles: list[IRole]
 	emojis: list[IEmoji]
 	members: list[IUser]
+	owner: IUser | None
 
 	async def fetchMember(self, id: str) -> IUser | None:
 		pass

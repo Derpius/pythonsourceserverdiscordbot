@@ -184,7 +184,8 @@ class Guild(IGuild):
 			guild.id, guild.name,
 			[Role(role, self) for role in guild.roles],
 			[],#[Emoji(emoji, self) for emoji in guild.emojis], Emojis arent in the api fully yet
-			[User(member, self) for member in guild.members]
+			[User(member, self) for member in guild.members],
+			User(guild.owner, self)
 		)
 		self._guild = guild
 

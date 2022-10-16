@@ -5,22 +5,34 @@ from sourceserver.sourceserver import SourceServer
 from .interface import IChannel
 
 class Server(SourceServer):
-	def __init__(self, connectionString: str, relay: bool = False, toNotify: list = []):
+	def __init__(self, connectionString: str, relay: bool = False, toNotify: list = [], restartCmd: str = ""):
 		super().__init__(connectionString)
+
 		self.relay: bool = relay
 		self.toNotify: list[str] = toNotify
+		self.restartCmd = restartCmd
 
 		self.timeSinceDown: float = -1
 
 class Servers:
 	def __init__(self, json: dict) -> None:
-		self._channels: dict[str, Server] = {id: Server(data["server"], data["relay"], data["toNotify"]) for id, data in json.items()}
+		self._channels: dict[str, Server] = {id: Server(
+			data["server"],
+			data["relay"],
+			data["toNotify"],
+			str(data["restartCmd"]).strip() if "restartCmd" in data else ""
+		) for id, data in json.items()}
 	
 	def __iter__(self) -> Iterator[tuple[str, Server]]:
 		return self._channels.items().__iter__()
 
 	def encode(self) -> dict[str, Server]:
-		return {id: {"server": server.constr, "relay": server.relay, "toNotify": server.toNotify} for id, server in self._channels.items()}
+		return {id: {
+			"server": server.constr,
+			"relay": server.relay,
+			"toNotify": server.toNotify,
+			"restartCmd": server.restartCmd
+		} for id, server in self._channels.items()}
 
 	def channelBound(self, channel: IChannel) -> bool:
 		return channel.id in self._channels

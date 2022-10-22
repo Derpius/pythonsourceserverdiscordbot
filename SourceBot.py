@@ -527,7 +527,7 @@ async def restart(ctx: Context, configure: str = None):
 		return
 
 	msg = await ctx.reply("Running restart command...")
-	result = subprocess.run(restartCmd, shell=True, capture_output=True)
+	result = subprocess.run(restartCmd, shell=True, capture_output=True, encoding="iso-8859-1")
 
 	output = "No output"
 	if result.stdout:
@@ -535,7 +535,7 @@ async def restart(ctx: Context, configure: str = None):
 	elif result.stderr:
 		output = result.stderr
 
-	await msg.edit("```ansi\n" + output.encode("iso-8859-1") + "\n```")
+	await msg.edit("```ansi\n" + output + "\n```")
 
 @bot.loop(60)
 async def pingServer():

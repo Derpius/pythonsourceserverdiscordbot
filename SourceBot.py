@@ -588,6 +588,11 @@ async def log(ctx: Context, mode: str = None):
 	except:
 		await ctx.reply("Failed to read log file")
 	else:
+		numMatchedLines = len(matchedLines)
+		if numMatchedLines == 0:
+			await ctx.reply("Nothing found (either the logfile is empty or your search pattern returned no results)")
+			return
+
 		matchedLines.reverse()
 		await ctx.reply("Found `{numMatchedLines}` lines\n```ansi\n{output}\n```".format(
 			numMatchedLines = len(matchedLines),

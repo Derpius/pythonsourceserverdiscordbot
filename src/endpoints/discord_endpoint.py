@@ -1,4 +1,5 @@
 import asyncio
+import traceback
 from typing import Sequence
 
 import discord
@@ -209,6 +210,10 @@ class Bot(IBot):
 				await self._bot.invoke(ctx)
 			elif "onMessage" in self.events:
 				await self.events["onMessage"](Message(message, Guild(message.guild)))
+		
+		@bot.event
+		async def on_command_error(ctx: commands.Context, err: commands.CommandError):
+			traceback.print_exception(type(err), err, err.__traceback__)
 
 		@bot.event
 		async def on_member_join(member: discord.Member):

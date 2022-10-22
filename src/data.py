@@ -5,12 +5,14 @@ from sourceserver.sourceserver import SourceServer
 from .interface import IChannel
 
 class Server(SourceServer):
-	def __init__(self, connectionString: str, relay: bool = False, toNotify: list = [], restartCmd: str = ""):
+	def __init__(self, connectionString: str, relay: bool = False, toNotify: list = [], restartCmd: str = "", logPath: str = ""):
 		super().__init__(connectionString)
 
 		self.relay: bool = relay
 		self.toNotify: list[str] = toNotify
+
 		self.restartCmd = restartCmd
+		self.logPath = logPath
 
 		self.timeSinceDown: float = -1
 
@@ -20,7 +22,8 @@ class Servers:
 			data["server"],
 			data["relay"],
 			data["toNotify"],
-			str(data["restartCmd"]).strip() if "restartCmd" in data else ""
+			str(data["restartCmd"]).strip() if "restartCmd" in data else "",
+			str(data["logPath"]).strip() if "logPath" in data else ""
 		) for id, data in json.items()}
 	
 	def __iter__(self) -> Iterator[tuple[str, Server]]:
@@ -31,7 +34,8 @@ class Servers:
 			"server": server.constr,
 			"relay": server.relay,
 			"toNotify": server.toNotify,
-			"restartCmd": server.restartCmd
+			"restartCmd": server.restartCmd,
+			"logPath": server.logPath
 		} for id, server in self._channels.items()}
 
 	def channelBound(self, channel: IChannel) -> bool:

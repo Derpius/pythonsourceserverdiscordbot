@@ -5,6 +5,9 @@ import atexit
 import json
 import random
 import subprocess
+import typing
+from file_read_backwards import FileReadBackwards
+import re
 
 from sourceserver.exceptions import SourceError
 
@@ -14,6 +17,8 @@ from src.data import Server, Servers
 from src.utils import formatTimedelta, Colour
 from src.relay import Relay
 from src.infopayload import InfoPayload
+
+IP_PATTERN = re.compile("(?:(?:[0-9]|[0-9][0-9]|1[0-9][0-9]|2[0-4][0-9]|25[0-5])\.){3}(?:25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[0-9][0-9]|[0-9])")
 
 config = None
 with open(os.path.join(os.path.dirname(__file__), "config.json"), "r") as f:
@@ -517,7 +522,7 @@ async def restart(ctx: Context, configure: str = None):
 			await ctx.reply("No command specified")
 			return
 
-		data[ctx.channel].restartCmd = command.strip()
+		data[ctx.channel].restartCmd = command
 		await ctx.reply("Restart command set")
 		return
 
@@ -536,6 +541,58 @@ async def restart(ctx: Context, configure: str = None):
 		output = result.stderr
 
 	await msg.edit("```ansi\n" + output + "\n```")
+
+@bot.command
+async def log(ctx: Context, mode: str = None):
+	'''
+	Outputs latest entries in a logfile with regex search and IP filtering
+	'''
+	if not await checkChannelBound(ctx): return
+
+	if mode == "configure":
+		if ctx.author.id != ctx.guild.owner.id:
+			await ctx.reply("Due to the security risks of reading arbitrary files from the system, only the owner of this server may configure it")
+			return
+
+		logPath = ctx.message.cleanContent[len(config.prefix) + len("log configure"):]
+		logPath = logPath.strip()
+
+		if not logPath:
+			await ctx.reply("No log path specified")
+			return
+
+		data[ctx.channel].logPath = logPath
+		await ctx.reply("Log path set")
+		return
+
+	logPath = data[ctx.channel].logPath
+	if not logPath:
+		await ctx.reply(f"A log path is not configured for this channel, use `{config.prefix}log configure [path]` to set one up")
+		return
+
+	search = ctx.message.cleanContent[len(config.prefix) + len("log"):].strip()
+
+	try:
+		matchedLines = []
+		totalStrLen = 0
+		with FileReadBackwards(logPath) as f:
+			for line in f:
+				line = re.sub(IP_PATTERN, "\033[0;31m███.███.███.███\033[0m", line)
+				if search:
+					(line, matches) = re.subn(search, lambda match: "\033[1;32m" + match.group() + "\033[0m", line)
+					if matches < 1: continue
+
+				matchedLines.append(line)
+				totalStrLen += len(line) + 1 # add 1 for newline char
+				if totalStrLen > 1000: break
+	except:
+		await ctx.reply("Failed to read log file")
+	else:
+		matchedLines.reverse()
+		await ctx.reply("Found `{numMatchedLines}` lines\n```ansi\n{output}\n```".format(
+			numMatchedLines = len(matchedLines),
+			output = "\n".join(matchedLines)
+		))
 
 @bot.loop(60)
 async def pingServer():

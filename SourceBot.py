@@ -535,7 +535,7 @@ async def restart(ctx: Context, configure: str = None):
 	elif result.stderr:
 		output = result.stderr
 
-	await msg.edit("```ansi\n" + output + "\n```")
+	await msg.edit("```ansi\n" + output.encode("iso-8859-1") + "\n```")
 
 @bot.loop(60)
 async def pingServer():

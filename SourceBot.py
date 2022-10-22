@@ -527,7 +527,7 @@ async def restart(ctx: Context, configure: str = None):
 		return
 
 	msg = await ctx.reply("Running restart command...")
-	result = subprocess.run(restartCmd, shell=True, capture_output=True, encoding="iso-8859-1")
+	result = subprocess.run(restartCmd, shell=True, capture_output=True, encoding="utf-8")
 
 	output = "No output"
 	if result.stdout:

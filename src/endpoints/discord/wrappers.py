@@ -15,17 +15,17 @@ PERMISSION_WRAPPERS = {
 class Guild(IGuild): pass
 
 class User(IUser):
-	_usr: discord.Member
+	_usr: discord.User | discord.Member
 
-	def __init__(self, member: discord.Member, guild: Guild) -> None:
+	def __init__(self, user: discord.User | discord.Member, guild: Guild) -> None:
 		super().__init__(
 			guild,
-			str(member.id), member.name,
-			str(member.display_avatar), member.nick,
-			[Role(role, guild) for role in member.roles],
-			member.bot
+			str(user.id), user.name,
+			str(user.display_avatar), user.nick if isinstance(user, discord.Member) else None,
+			[Role(role, guild) for role in user.roles] if isinstance(user, discord.Member) else [],
+			user.bot
 		)
-		self._usr = member
+		self._usr = user
 
 	def __str__(self) -> str:
 		return f"<@{self.id}>"
@@ -44,6 +44,9 @@ class User(IUser):
 		return self.roles[-1]
 
 	def hasPermission(self, permission: Permission) -> bool:
+		if not isinstance(self._usr, discord.Member):
+			return False
+
 		return PERMISSION_WRAPPERS[permission](self._usr.guild_permissions)
 	
 	async def send(self, content: str | None = None, masquerade: Masquerade | None = None, embed: Embed | None = None) -> None:
@@ -86,12 +89,9 @@ class Channel(IChannel):
 		if masquerade is None or masquerade.name is None:
 			return Message(await self._chnl.send(content, embed=compileEmbed(embed)), self.guild)
 
-		print("Sending message to channel")
 		try:
-			print("Getting webhook")
 			webhook = await webhookService.connect(self._chnl)
 		except discord.Forbidden:
-			print("Failed to get webhook")
 			return Message(
 				await self._chnl.send(
 					f"{masquerade.name} | {content}",
@@ -100,7 +100,6 @@ class Channel(IChannel):
 				self.guild
 			)
 		else:
-			print("Got webhook")
 			return Message(
 				await webhook.send(
 					content,

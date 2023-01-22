@@ -22,12 +22,12 @@ UNWRAP = {
 }
 
 WRAP = {
-	discord.Member: lambda raw: User(raw, Guild(raw.guild)),
-	discord.Message: lambda raw: Message(raw, Guild(raw.guild)),
-	discord.TextChannel: lambda raw, bot: Channel(raw, Guild(raw.guild), bot._webhooks),
-	discord.Role: lambda raw: Role(raw, Guild(raw.guild)),
-	discord.Emoji: lambda raw: Emoji(raw, Guild(raw.guild)),
-	commands.Context: lambda ctx: Context(Message(ctx.message, Guild(ctx.guild)))
+	discord.Member: lambda bot, raw: User(raw, Guild(raw.guild)),
+	discord.Message: lambda bot, raw: Message(raw, Guild(raw.guild)),
+	discord.TextChannel: lambda bot, raw: Channel(raw, Guild(raw.guild), bot._webhooks),
+	discord.Role: lambda bot, raw: Role(raw, Guild(raw.guild)),
+	discord.Emoji: lambda bot, raw: Emoji(raw, Guild(raw.guild)),
+	commands.Context: lambda bot, ctx: Context(Message(ctx.message, Guild(ctx.guild)))
 }
 
 def wrapLoop(loop):

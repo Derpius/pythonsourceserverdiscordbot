@@ -9,7 +9,7 @@ async def configure(user: discord.ClientUser):
 	_user = user
 	_avatar = await user.avatar.read()
 
-async def connect(self, channel: discord.TextChannel) -> discord.Webhook:
+async def connect(channel: discord.TextChannel) -> discord.Webhook:
 	'''Gets a webhook for a channel, creating one if needed. Returns None if forbidden'''
 
 	if _user is None or _avatar is None:

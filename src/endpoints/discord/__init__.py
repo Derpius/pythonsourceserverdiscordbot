@@ -10,7 +10,7 @@ from ...interface import *
 from ...config import Config
 
 from .wrappers import Guild, User, Message, Channel, Role, Emoji
-from .webhookService import WebhookService
+from . import webhookService
 
 UNWRAP = {
 	IUser: discord.Member,
@@ -22,12 +22,12 @@ UNWRAP = {
 }
 
 WRAP = {
-	discord.Member: lambda bot, raw: User(raw, Guild(raw.guild)),
-	discord.Message: lambda bot, raw: Message(raw, Guild(raw.guild)),
-	discord.TextChannel: lambda bot, raw: Channel(raw, Guild(raw.guild), bot._webhooks),
-	discord.Role: lambda bot, raw: Role(raw, Guild(raw.guild)),
-	discord.Emoji: lambda bot, raw: Emoji(raw, Guild(raw.guild)),
-	commands.Context: lambda bot, ctx: Context(Message(ctx.message, Guild(ctx.guild)))
+	discord.Member: lambda raw: User(raw, Guild(raw.guild)),
+	discord.Message: lambda raw: Message(raw, Guild(raw.guild)),
+	discord.TextChannel: lambda raw: Channel(raw, Guild(raw.guild)),
+	discord.Role: lambda raw: Role(raw, Guild(raw.guild)),
+	discord.Emoji: lambda raw: Emoji(raw, Guild(raw.guild)),
+	commands.Context: lambda ctx: Context(Message(ctx.message, Guild(ctx.guild)))
 }
 
 def wrapLoop(loop):
@@ -122,13 +122,13 @@ class Bot(IBot):
 					await self.events["onGuildEmojiDelete"](Emoji(beforeHash[id], Guild(beforeHash[id].guild)))
 
 		self._bot = bot
-		self._webhooks = WebhookService(self._bot.user)
 
 	async def start(self) -> None:
 		for loop in self.loops:
 			asyncio.create_task(wrapLoop(loop)())
 
 		await self._bot.start(self.token)
+		await webhookService.configure(self._bot.user)
 
 	async def waitUntilReady(self) -> None:
 		await self._bot.wait_until_ready()
@@ -155,9 +155,9 @@ class Bot(IBot):
 			wrapped = []
 			for arg in args:
 				if type(arg) in WRAP:
-					arg = WRAP[type(arg)](self, arg)
+					arg = WRAP[type(arg)](arg)
 				wrapped.append(arg)
-			await func(WRAP[commands.Context](self, ctx), *wrapped)
+			await func(WRAP[commands.Context](ctx), *wrapped)
 
 		wrapper.__doc__ = func.__doc__
 		wrapper.__signature__ = sig

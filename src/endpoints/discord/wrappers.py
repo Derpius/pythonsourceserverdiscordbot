@@ -6,7 +6,7 @@ from discord.ext import commands
 from ...interface import *
 
 from .compileEmbed import compileEmbed
-from .webhookService import WebhookService
+from . import webhookService
 
 PERMISSION_WRAPPERS = {
 	Permission.ManageGuild: lambda perms: perms.manage_guild
@@ -77,20 +77,21 @@ class Message(IMessage):
 
 class Channel(IChannel):
 	_chnl: discord.TextChannel
-	_webhooks: WebhookService
 
-	def __init__(self, channel: discord.TextChannel, guild: Guild, webhookService: WebhookService) -> None:
+	def __init__(self, channel: discord.TextChannel, guild: Guild) -> None:
 		super().__init__(guild, str(channel.id), channel.name)
 		self._chnl = channel
-		self._webhooks = webhookService
 
 	async def send(self, content: str | None = None, masquerade: Masquerade | None = None, embed: Embed | None = None) -> Message:
 		if masquerade is None or masquerade.name is None:
 			return Message(await self._chnl.send(content, embed=compileEmbed(embed)), self.guild)
 
+		print("Sending message to channel")
 		try:
-			webhook = await self._webhooks.connect(self._chnl)
+			print("Getting webhook")
+			webhook = await webhookService.connect(self._chnl)
 		except discord.Forbidden:
+			print("Failed to get webhook")
 			return Message(
 				await self._chnl.send(
 					f"{masquerade.name} | {content}",
@@ -99,6 +100,7 @@ class Channel(IChannel):
 				self.guild
 			)
 		else:
+			print("Got webhook")
 			return Message(
 				await webhook.send(
 					content,

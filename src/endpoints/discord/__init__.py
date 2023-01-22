@@ -51,6 +51,7 @@ class Bot(IBot):
 
 		@bot.event
 		async def on_ready():
+			await webhookService.configure(self._bot.user)
 			if "onReady" in self.events: await self.events["onReady"]()
 
 		@bot.event
@@ -128,7 +129,6 @@ class Bot(IBot):
 			asyncio.create_task(wrapLoop(loop)())
 
 		await self._bot.start(self.token)
-		await webhookService.configure(self._bot.user)
 
 	async def waitUntilReady(self) -> None:
 		await self._bot.wait_until_ready()

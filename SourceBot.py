@@ -43,7 +43,7 @@ config = Config(
 )
 
 if config.backend == Backend.Discord:
-	from src.endpoints.discord_endpoint import Bot
+	from src.endpoints.discord import Bot
 elif config.backend == Backend.Revolt:
 	from src.endpoints.revolt_endpoint import Bot
 else:

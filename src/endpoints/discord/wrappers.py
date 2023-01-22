@@ -6,6 +6,7 @@ from discord.ext import commands
 from ...interface import *
 
 from .compileEmbed import compileEmbed
+from .webhookService import WebhookService
 
 PERMISSION_WRAPPERS = {
 	Permission.ManageGuild: lambda perms: perms.manage_guild
@@ -46,10 +47,10 @@ class User(IUser):
 		return PERMISSION_WRAPPERS[permission](self._usr.guild_permissions)
 	
 	async def send(self, content: str | None = None, masquerade: Masquerade | None = None, embed: Embed | None = None) -> None:
-		if masquerade is None or masquerade.name is None:
-			await self._usr.send(content, embed=compileEmbed(embed))
-			return
-		await self._usr.send(f"{masquerade.name} | {content}", embed=compileEmbed(embed))
+		if masquerade is not None:
+			raise ValueError("Masquerades on Discord require webhooks to mimic functionality, which are not supported in DMs")
+
+		await self._usr.send(content, embed=compileEmbed(embed))
 
 class Message(IMessage): pass
 class Message(IMessage):
@@ -66,27 +67,48 @@ class Message(IMessage):
 		self._msg = msg
 
 	async def reply(self, content: str | None = None, masquerade: Masquerade | None = None, embed: Embed | None = None) -> Message:
-		if masquerade is None or masquerade.name is None:
-			return Message(await self._msg.reply(content, embed=compileEmbed(embed)), self.guild)
-		return Message(await self._msg.reply(f"{masquerade.name} | {content}", embed=compileEmbed(embed)), self.guild)
+		if masquerade is not None:
+			raise ValueError("Masquerades on Discord require webhooks to mimic functionality, which cannot reply to messages")
+
+		return Message(await self._msg.reply(content, embed=compileEmbed(embed)), self.guild)
 
 	async def edit(self, content: str | None = None, masquerade: Masquerade | None = None, embed: Embed | None = None) -> None:
-		if masquerade is None or masquerade.name is None:
-			await self._msg.edit(content=content, embed=compileEmbed(embed))
-			return
-		await self._msg.edit(content=f"{masquerade.name} | {content}", embed=compileEmbed(embed))
+		await self._msg.edit(content=content, embed=compileEmbed(embed))
 
 class Channel(IChannel):
 	_chnl: discord.TextChannel
+	_webhooks: WebhookService
 
-	def __init__(self, channel: discord.TextChannel, guild: Guild) -> None:
+	def __init__(self, channel: discord.TextChannel, guild: Guild, webhookService: WebhookService) -> None:
 		super().__init__(guild, str(channel.id), channel.name)
 		self._chnl = channel
+		self._webhooks = webhookService
 
 	async def send(self, content: str | None = None, masquerade: Masquerade | None = None, embed: Embed | None = None) -> Message:
 		if masquerade is None or masquerade.name is None:
 			return Message(await self._chnl.send(content, embed=compileEmbed(embed)), self.guild)
-		return Message(await self._chnl.send(f"{masquerade.name} | {content}", embed=compileEmbed(embed)), self.guild)
+
+		try:
+			webhook = await self._webhooks.connect(self._chnl)
+		except discord.Forbidden:
+			return Message(
+				await self._chnl.send(
+					f"{masquerade.name} | {content}",
+					embed=compileEmbed(embed)
+				),
+				self.guild
+			)
+		else:
+			return Message(
+				await webhook.send(
+					content,
+					embed=compileEmbed(embed),
+					username=masquerade.name,
+					avatar_url=masquerade.avatar,
+					wait=True
+				),
+				self.guild
+			)
 
 class Role(IRole):
 	_role: discord.Role
@@ -126,20 +148,3 @@ class Guild(IGuild):
 		member = await self._guild.fetch_member(int(id))
 		if member: return User(member, self)
 		return None
-
-UNWRAP = {
-	IUser: discord.Member,
-	IMessage: discord.Message,
-	IChannel: discord.TextChannel,
-	IRole: discord.Role,
-	IEmoji: discord.Emoji,
-	Context: commands.Context
-}
-WRAP = {
-	discord.Member: lambda raw: User(raw, Guild(raw.guild)),
-	discord.Message: lambda raw: Message(raw, Guild(raw.guild)),
-	discord.TextChannel: lambda raw: Channel(raw, Guild(raw.guild)),
-	discord.Role: lambda raw: Role(raw, Guild(raw.guild)),
-	discord.Emoji: lambda raw: Emoji(raw, Guild(raw.guild)),
-	commands.Context: lambda ctx: Context(Message(ctx.message, Guild(ctx.guild)))
-}

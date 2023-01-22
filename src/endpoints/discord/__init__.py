@@ -6,10 +6,29 @@ from typing import Coroutine, Sequence
 import discord
 from discord.ext import commands
 
-from ...interface import IBot, IChannel
+from ...interface import *
 from ...config import Config
 
-from .wrapping import WRAP, UNWRAP, Guild, User, Message, Channel, Role, Emoji
+from .wrappers import Guild, User, Message, Channel, Role, Emoji
+from .webhookService import WebhookService
+
+UNWRAP = {
+	IUser: discord.Member,
+	IMessage: discord.Message,
+	IChannel: discord.TextChannel,
+	IRole: discord.Role,
+	IEmoji: discord.Emoji,
+	Context: commands.Context
+}
+
+WRAP = {
+	discord.Member: lambda raw: User(raw, Guild(raw.guild)),
+	discord.Message: lambda raw: Message(raw, Guild(raw.guild)),
+	discord.TextChannel: lambda raw, bot: Channel(raw, Guild(raw.guild), bot._webhooks),
+	discord.Role: lambda raw: Role(raw, Guild(raw.guild)),
+	discord.Emoji: lambda raw: Emoji(raw, Guild(raw.guild)),
+	commands.Context: lambda ctx: Context(Message(ctx.message, Guild(ctx.guild)))
+}
 
 def wrapLoop(loop):
 	async def wrapper():
@@ -103,6 +122,7 @@ class Bot(IBot):
 					await self.events["onGuildEmojiDelete"](Emoji(beforeHash[id], Guild(beforeHash[id].guild)))
 
 		self._bot = bot
+		self._webhooks = WebhookService(self._bot.user)
 
 	async def start(self) -> None:
 		for loop in self.loops:
@@ -135,9 +155,9 @@ class Bot(IBot):
 			wrapped = []
 			for arg in args:
 				if type(arg) in WRAP:
-					arg = WRAP[type(arg)](arg)
+					arg = WRAP[type(arg)](arg, self)
 				wrapped.append(arg)
-			await func(WRAP[commands.Context](ctx), *wrapped)
+			await func(WRAP[commands.Context](ctx, self), *wrapped)
 
 		wrapper.__doc__ = func.__doc__
 		wrapper.__signature__ = sig

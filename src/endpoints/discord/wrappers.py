@@ -106,7 +106,8 @@ class Channel(IChannel):
 					embed=compileEmbed(embed),
 					username=masquerade.name,
 					avatar_url=masquerade.avatar,
-					wait=True
+					wait=True,
+					allowed_mentions=discord.AllowedMentions(everyone=False)
 				),
 				self.guild
 			)

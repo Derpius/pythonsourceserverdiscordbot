@@ -155,9 +155,9 @@ class Bot(IBot):
 			wrapped = []
 			for arg in args:
 				if type(arg) in WRAP:
-					arg = WRAP[type(arg)](arg, self)
+					arg = WRAP[type(arg)](self, arg)
 				wrapped.append(arg)
-			await func(WRAP[commands.Context](ctx, self), *wrapped)
+			await func(WRAP[commands.Context](self, ctx), *wrapped)
 
 		wrapper.__doc__ = func.__doc__
 		wrapper.__signature__ = sig

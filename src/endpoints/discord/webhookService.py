@@ -22,7 +22,7 @@ async def connect(channel: discord.TextChannel) -> discord.Webhook:
 		return webhook
 
 	return await channel.create_webhook(
-		name="SourceBot Masquerades",
+		name="Masquerades",
 		avatar=_avatar,
 		reason="Create webhook for partial masquerade support"
 	)

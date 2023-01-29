@@ -5,7 +5,6 @@ import atexit
 import json
 import random
 import subprocess
-import typing
 from file_read_backwards import FileReadBackwards
 import re
 
@@ -17,30 +16,18 @@ from src.data import Server, Servers
 from src.utils import formatTimedelta, Colour
 from src.relay import Relay
 from src.infopayload import InfoPayload
+from src.cli import getCLIArgs
 
 IP_PATTERN = re.compile("(?:(?:[0-9]|[0-9][0-9]|1[0-9][0-9]|2[0-4][0-9]|25[0-5])\.){3}(?:25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[0-9][0-9]|[0-9])")
 
+args = getCLIArgs()
+
 config = None
-with open(os.path.join(os.path.dirname(__file__), "config.json"), "r") as f:
+with open(args.config, "r") as f:
 	config = json.load(f)
 
-BACKENDS = {
-	"discord": Backend.Discord,
-	"revolt": Backend.Revolt
-}
-
 token = config["token"]
-config = Config(
-	BACKENDS[config["backend"]] if config["backend"] in BACKENDS else Backend.Undefined,
-	config["prefix"], Colour(config["accent-colour"][0], config["accent-colour"][1], config["accent-colour"][2]),
-	config["time-down-before-notify"],
-	config["relay-port"],
-	MessageFormats(
-		config["message-formats"]["join"], config["message-formats"]["leave"],
-		config["message-formats"]["suicide"], config["message-formats"]["suicide-no-weapon"],
-		config["message-formats"]["kill"], config["message-formats"]["kill-no-weapon"]
-	)
-)
+config = Config.fromJSON(config)
 
 if config.backend == Backend.Discord:
 	from src.endpoints.discord import Bot
@@ -50,9 +37,8 @@ else:
 	raise Exception("Invalid backend in config")
 
 data = None
-dataPath = os.path.join(os.path.dirname(__file__), "data.json")
-mode = "r" if os.path.exists(dataPath) else "w+"
-with open(dataPath, mode) as f:
+mode = "r" if os.path.exists(args.data) else "w+"
+with open(args.data, mode) as f:
 	try:
 		data = json.load(f)
 	except json.decoder.JSONDecodeError:
@@ -64,7 +50,7 @@ data = Servers(data)
 def onExit(filepath: str):
 	print("Performing safe shutdown")
 
-	with open(dataPath, "w+") as f:
+	with open(args.data, "w+") as f:
 		json.dump(data.encode(), f)
 atexit.register(onExit, __file__)
 

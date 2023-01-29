@@ -7,6 +7,11 @@ class Backend(Enum):
 	Discord = 0,
 	Revolt = 1
 
+BACKENDS = {
+	"discord": Backend.Discord,
+	"revolt": Backend.Revolt
+}
+
 @dataclass
 class MessageFormats:
 	join: list[str] = field(default_factory=lambda: ["`{player}` just joined the server!"])
@@ -24,3 +29,17 @@ class Config:
 	timeDownBeforeNotify: float = 8080
 	relayPort: int = 8080
 	messageFormats: MessageFormats = MessageFormats()
+
+	@staticmethod
+	def fromJSON(config: dict):
+		return Config(
+			BACKENDS[config["backend"]] if config["backend"] in BACKENDS else Backend.Undefined,
+			config["prefix"], Colour(config["accent-colour"][0], config["accent-colour"][1], config["accent-colour"][2]),
+			config["time-down-before-notify"],
+			config["relay-port"],
+			MessageFormats(
+				config["message-formats"]["join"], config["message-formats"]["leave"],
+				config["message-formats"]["suicide"], config["message-formats"]["suicide-no-weapon"],
+				config["message-formats"]["kill"], config["message-formats"]["kill-no-weapon"]
+			)
+		)

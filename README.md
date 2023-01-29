@@ -2,9 +2,7 @@
 Discord and Revolt compatible bot to provide rich presence and chat relaying for any number of game servers that implement the Source dedicated server UDP query protocol, or completely unrelated servers that a compatible relay client is written for.  
 
 ## Dependencies:  
-* `pip install -U discord.py` and/or `pip install -U revolt.py`  
-* `pip install -U python-dotenv`  
-* `pip install -U sourceserver`  
+`pip install -r requirements.txt`
 
 ## Installation  
 Clone this repository or download the latest release of the bot, along with any game relay clients you want (clone the respective branch or download prepackaged from releases).  

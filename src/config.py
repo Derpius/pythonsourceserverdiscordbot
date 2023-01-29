@@ -28,7 +28,7 @@ class Config:
 	accentColour: Colour = field(default_factory=lambda: Colour(255, 255, 255))
 	timeDownBeforeNotify: float = 8080
 	relayPort: int = 8080
-	messageFormats: MessageFormats = MessageFormats()
+	messageFormats: MessageFormats = field(default_factory=lambda: MessageFormats())
 
 	@staticmethod
 	def fromJSON(config: dict):

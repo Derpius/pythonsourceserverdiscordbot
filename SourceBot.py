@@ -48,7 +48,7 @@ with open(args.data, mode) as f:
 data = Servers(data)
 
 # Register clean shutdown function
-def onExit(filepath: str):
+def onExit(_signo, _stack_frame):
 	print("Performing safe shutdown")
 
 	with open(args.data, "w+") as f:

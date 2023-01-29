@@ -1,12 +1,13 @@
 import asyncio
 from datetime import timedelta
 import os
-import atexit
+import signal
 import json
 import random
 import subprocess
 from file_read_backwards import FileReadBackwards
 import re
+import sys
 
 from sourceserver.exceptions import SourceError
 
@@ -52,7 +53,11 @@ def onExit(filepath: str):
 
 	with open(args.data, "w+") as f:
 		json.dump(data.encode(), f)
-atexit.register(onExit, __file__)
+
+	sys.exit(0)
+
+signal.signal(signal.SIGINT, onExit)
+signal.signal(signal.SIGTERM, onExit)
 
 bot = Bot(token, config)
 relay = Relay(config.relayPort)

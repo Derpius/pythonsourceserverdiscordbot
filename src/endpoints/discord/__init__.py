@@ -33,7 +33,11 @@ WRAP = {
 def wrapLoop(loop):
 	async def wrapper():
 		while True:
-			await loop.func()
+			try:
+				await loop.func()
+			except Exception as err:
+				traceback.print_exception(type(err), err, err.__traceback__)
+
 			await asyncio.sleep(loop.interval)
 	return wrapper
 

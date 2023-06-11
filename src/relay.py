@@ -56,8 +56,8 @@ class Handler(BaseHTTPRequestHandler):
 			self.end_headers()
 			return
 
-		constring = f"{self.client_address[0] if self.client_address[0] != '127.0.0.1' else get_ip()}:{self.headers['Source-Port']}"
-		if constring not in relayMsgs:
+		constring = self.getConString(relayMsgs)
+		if not constring:
 			self.send_response(403)
 			self.end_headers()
 			return
@@ -79,8 +79,8 @@ class Handler(BaseHTTPRequestHandler):
 			self.end_headers()
 			return
 
-		constring = f"{self.client_address[0] if self.client_address[0] != '127.0.0.1' else get_ip()}:{self.headers['Source-Port']}"
-		if constring not in sourceMsgs:
+		constring = self.getConString(sourceMsgs)
+		if not constring:
 			self.send_response(403)
 			self.end_headers()
 			return
@@ -131,8 +131,8 @@ class Handler(BaseHTTPRequestHandler):
 			self.end_headers()
 			return
 
-		constring = f"{self.client_address[0] if self.client_address[0] != '127.0.0.1' else get_ip()}:{self.headers['Source-Port']}"
-		if constring not in sourceMsgs:
+		constring = self.getConString(sourceMsgs)
+		if not constring:
 			self.send_response(403)
 			self.end_headers()
 			return
@@ -142,6 +142,24 @@ class Handler(BaseHTTPRequestHandler):
 
 		self.wfile.write(bytes(infoPayloads[constring], encoding="utf-8"))
 		payloadDirty[constring] = False
+	
+	def getConString(self, messageDict):
+		ip = self.client_address[0] if self.client_address[0] != '127.0.0.1' else get_ip()
+		port = self.headers['Source-Port']
+
+		hostnameConString = None
+		try:
+			hostname = socket.gethostbyaddr(ip)
+			hostnameConString = f"{hostname}:{port}"
+		except:
+			pass
+
+		ipConString = f"{ip}:{port}"
+
+		if hostnameConString and hostnameConString in messageDict:
+			return hostnameConString
+		if ipConString in messageDict:
+			return ipConString
 
 class Relay(object):
 	'''HTTP chat relay for source servers'''

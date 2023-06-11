@@ -15,6 +15,7 @@ relayMsgs = {}
 sourceMsgs = {}
 
 avatarPattern = re.compile(r"<avatarIcon><!\[CDATA\[(.*?)\]\]></avatarIcon>")
+conStringPattern = re.compile(r"(?P<hostname>.+):(?P<port>\d+)$")
 
 # https://stackoverflow.com/a/28950776
 def get_ip():
@@ -143,23 +144,19 @@ class Handler(BaseHTTPRequestHandler):
 		self.wfile.write(bytes(infoPayloads[constring], encoding="utf-8"))
 		payloadDirty[constring] = False
 	
-	def getConString(self, messageDict):
-		ip = self.client_address[0] if self.client_address[0] != '127.0.0.1' else get_ip()
-		port = self.headers['Source-Port']
+	def getConString(self, messageDict: dict[str, dict]):
+		originIp = self.client_address[0] if self.client_address[0] != '127.0.0.1' else get_ip()
+		originPort = self.headers['Source-Port']
 
-		hostnameConString = None
-		try:
-			hostname = socket.gethostbyaddr(ip)
-			hostnameConString = f"{hostname}:{port}"
-		except:
-			pass
+		for conString in messageDict.keys():
+			match = conStringPattern.match(conString)
+			if not match:
+				continue
 
-		ipConString = f"{ip}:{port}"
-
-		if hostnameConString and hostnameConString in messageDict:
-			return hostnameConString
-		if ipConString in messageDict:
-			return ipConString
+			ip = socket.gethostbyname(match.group("hostname"))
+			port = match.group("port")
+			if ip == originIp and port == originPort:
+				return conString
 
 class Relay(object):
 	'''HTTP chat relay for source servers'''

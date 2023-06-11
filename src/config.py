@@ -29,6 +29,7 @@ class Config:
 	timeDownBeforeNotify: float = 8080
 	relayPort: int = 8080
 	messageFormats: MessageFormats = field(default_factory=lambda: MessageFormats())
+	isRunningBehindCloudflare: bool = False
 
 	@staticmethod
 	def fromJSON(config: dict):
@@ -41,5 +42,6 @@ class Config:
 				config["message-formats"]["join"], config["message-formats"]["leave"],
 				config["message-formats"]["suicide"], config["message-formats"]["suicide-no-weapon"],
 				config["message-formats"]["kill"], config["message-formats"]["kill-no-weapon"]
-			)
+			),
+			isRunningBehindCloudflare=config["is-running-behind-cloudflare"]
 		)

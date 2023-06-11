@@ -7,6 +7,7 @@ from time import sleep
 import requests
 import re
 import socket
+from functools import partial
 
 infoPayloads = {}
 payloadDirty = {}
@@ -31,7 +32,7 @@ def get_ip():
 		s.close()
 	return IP
 
-def relayThread(port):
+def relayThread(port, isRunningBehindCloudflare):
 	def onExit():
 		print("Relay thread shutdown")
 		try: server.shutdown()
@@ -40,7 +41,7 @@ def relayThread(port):
 	atexit.register(onExit)
 
 	# Define server
-	server = ThreadedHTTPServer(("", port), Handler)
+	server = ThreadedHTTPServer(("", port), partial(Handler, isRunningBehindCloudflare))
 	print ("Started HTTP relay on port ", port)
 
 	# Listen indefinately for requests
@@ -50,6 +51,11 @@ class ThreadedHTTPServer(ThreadingMixIn, HTTPServer):
 	pass
 
 class Handler(BaseHTTPRequestHandler):
+	def __init__(self, isRunningBehindCloudflare, *args, **kwargs) -> None:
+		self.isRunningBehindCloudflare = isRunningBehindCloudflare
+
+		super().__init__(*args, **kwargs)
+
 	def do_GET(self):
 		'''The "transmitter" for discord chat (and any flags)'''
 		if "Source-Port" not in self.headers:
@@ -144,8 +150,17 @@ class Handler(BaseHTTPRequestHandler):
 		self.wfile.write(bytes(infoPayloads[constring], encoding="utf-8"))
 		payloadDirty[constring] = False
 	
+	def getOriginIp(self):
+		if self.isRunningBehindCloudflare and "CF-Connecting-IP" in self.headers:
+			return self.headers["CF-Connecting-IP"]
+
+		if self.client_address[0] != '127.0.0.1':
+			return self.client_address[0]
+
+		return get_ip()
+
 	def getConString(self, messageDict: dict[str, dict]):
-		originIp = self.client_address[0] if self.client_address[0] != '127.0.0.1' else get_ip()
+		originIp = self.getOriginIp()
 		originPort = self.headers['Source-Port']
 
 		for conString in messageDict.keys():
@@ -161,9 +176,9 @@ class Handler(BaseHTTPRequestHandler):
 class Relay(object):
 	'''HTTP chat relay for source servers'''
 
-	def __init__(self, port):
+	def __init__(self, port, isRunningBehindCloudflare):
 		print("Starting relay thread")
-		self.t = Thread(target=relayThread, args=(port,))
+		self.t = Thread(target=relayThread, args=(port, isRunningBehindCloudflare))
 		self.t.daemon = True
 		self.t.start()
 	

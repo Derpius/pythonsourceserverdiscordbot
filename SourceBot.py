@@ -60,7 +60,7 @@ signal.signal(signal.SIGINT, onExit)
 signal.signal(signal.SIGTERM, onExit)
 
 bot = Bot(token, config)
-relay = Relay(config.relayPort)
+relay = Relay(config.relayPort, config.isRunningBehindCloudflare)
 autoclosed = []
 infoPayloads: dict[int, InfoPayload] = {}
 

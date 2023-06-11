@@ -13,6 +13,12 @@
 	"Port to run the HTTP relay server on",
 	"relay-port": 8080,
 
+	"comment-cloudflare": [
+		"Set to true if this server is running behind Cloudflare's Edge. This tells the relay server to route requests using the CF-Connecting-IP header",
+		"WARNING: Do not enable if the relay is exposed to the internet directly, as clients could spoof the header"
+	],
+	"is-running-behind-cloudflare": false,
+
 	"comment-message-formats":
 	"Format strings to use for relay messages (see https://www.w3schools.com/python/ref_string_format.asp)",
 	"message-formats": {

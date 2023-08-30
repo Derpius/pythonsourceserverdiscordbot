@@ -22,6 +22,8 @@ local apiRefTbl = include("api.lua")
 local Member, Role, Emote = include("types.lua")
 local json = include("relay/json.lua/json.lua")
 
+local gm = gmod.GetGamemode()
+
 --[[
 	Netcode
 ]]
@@ -44,12 +46,16 @@ local function decodePayload(payload)
 	apiRefTbl.members = members
 	apiRefTbl.roles = roles
 	apiRefTbl.emotes = emotes
+
+	hook.Call("Relay.InfoPayloadUpdated", gm)
 end
 
 if SERVER then
 	local function stream(data, plr)
 		local chunkSize = relay_infopayload_chunksize:GetInt()
-		if chunkSize == 0 or not chunkSize then _error("Invalid chunk size (change relay_infopayload_chunksize convar)") end
+		if chunkSize == 0 or not chunkSize then
+			_error("Invalid chunk size (change relay_infopayload_chunksize convar)")
+		end
 
 		-- Send header
 		net_Start("Relay.InfoPayloadHeader")
@@ -82,7 +88,9 @@ if SERVER then
 	function Relay.UpdateInfo()
 		_HTTP({
 			success = function(statusCode, content, headers)
-				if statusCode ~= 200 then return end
+				if statusCode ~= 200 then
+					return
+				end
 
 				-- Stream payload to clients
 				rawPayload = util_Compress(content)
@@ -93,7 +101,7 @@ if SERVER then
 			end,
 			method = "PATCH",
 			url = "http://" .. relay_connection:GetString(),
-			headers = {["Source-Port"] = hostport:GetString()}
+			headers = { ["Source-Port"] = hostport:GetString() },
 		})
 	end
 
@@ -110,7 +118,9 @@ else
 	end)
 
 	net_Receive("Relay.InfoPayload", function(len)
-		if streamToReceive == 0 then return end -- If this client isn't expecting a packet, drop it
+		if streamToReceive == 0 then
+			return
+		end -- If this client isn't expecting a packet, drop it
 
 		local id = net_ReadUInt(32)
 		local packet = net_ReadData((len - 32) / 8)

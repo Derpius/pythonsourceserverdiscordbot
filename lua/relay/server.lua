@@ -11,7 +11,7 @@ local gm = gmod.GetGamemode()
 
 function Relay.CachePost(body)
 	local nonce = 1
-	local key = tostring(math.floor(CurTime()))..string.char(nonce)
+	local key = tostring(math.floor(CurTime())) .. string.char(nonce)
 
 	while toPost[key] do
 		key = string.SetChar(key, #key, string.char(nonce))
@@ -29,10 +29,12 @@ local cachePost = Relay.CachePost
 local function onChat(plr, msg, teamCht)
 	local teamColour = team.GetColor(plr:Team())
 	cachePost({
-		type="message",
-		name=plr:Nick(), message=msg,
-		teamName=team.GetName(plr:Team()), teamColour=tostring(teamColour.r)..","..tostring(teamColour.g)..","..tostring(teamColour.b),
-		steamID = plr:SteamID64()
+		type = "message",
+		name = plr:Nick(),
+		message = msg,
+		teamName = team.GetName(plr:Team()),
+		teamColour = tostring(teamColour.r) .. "," .. tostring(teamColour.g) .. "," .. tostring(teamColour.b),
+		steamID = plr:SteamID64(),
 	})
 end
 
@@ -50,7 +52,9 @@ concommand.Add("relay_start", function(plr, cmd, args, argStr)
 			onChat = function(plr, msg, teamCht)
 				local ulxMsg = ulxGimpCB(plr, msg, teamCht)
 				if ulxMsg then
-					if ulxMsg ~= "" then oldOnChat(plr, ulxMsg, teamCht) end
+					if ulxMsg ~= "" then
+						oldOnChat(plr, ulxMsg, teamCht)
+					end
 					return ulxMsg
 				end
 				oldOnChat(plr, msg, teamCht)
@@ -58,29 +62,33 @@ concommand.Add("relay_start", function(plr, cmd, args, argStr)
 		end
 
 		hook.Add("PlayerSay", "Relay.CacheChat", onChat)
-		hook.Add("PlayerInitialSpawn", "Relay.CacheJoins", function(plr) cachePost({type="join", name=plr:Nick()}) end)
+		hook.Add("PlayerInitialSpawn", "Relay.CacheJoins", function(plr)
+			cachePost({ type = "join", name = plr:Nick() })
+		end)
 		hook.Add("PlayerDisconnected", "Relay.CacheLeaves", function(plr)
-			cachePost({type="leave", name=plr:Nick()})
+			cachePost({ type = "leave", name = plr:Nick() })
 
 			-- Edge case: if this leave event caused the server to go into hibernation, manually post the cache now
 			if not sv_hibernate_think:GetBool() and player.GetCount() == 1 then
 				HTTP({
 					method = "POST",
-					url = "http://"..relay_connection:GetString(),
+					url = "http://" .. relay_connection:GetString(),
 					body = util.TableToJSON(toPost),
 					type = "application/json",
-					headers = {["Source-Port"] = hostport:GetString()}
+					headers = { ["Source-Port"] = hostport:GetString() },
 				})
 				toPost = {}
 			end
 		end)
-		hook.Add("PlayerDeath", "Relay.CacheDeaths", function(vic, inf, atk)
-			cachePost({
-				type="death",
-				victim=vic:Name(), inflictor=inf.Name and inf:Name() or inf:GetClass(), attacker=atk.Name and atk:Name() or atk:GetClass(),
-				suicide=vic == atk and "1" or "0", noweapon=inf:GetClass() == atk:GetClass() and "1" or "0"
-			})
-		end)
+
+		-- TODO: Re-enable this after implementing proper rate limiting to avoid blocking chat easily
+		-- hook.Add("PlayerDeath", "Relay.CacheDeaths", function(vic, inf, atk)
+		-- 	cachePost({
+		-- 		type="death",
+		-- 		victim=vic:Name(), inflictor=inf.Name and inf:Name() or inf:GetClass(), attacker=atk.Name and atk:Name() or atk:GetClass(),
+		-- 		suicide=vic == atk and "1" or "0", noweapon=inf:GetClass() == atk:GetClass() and "1" or "0"
+		-- 	})
+		-- end)
 
 		local posting, getting = false, false
 		hook.Add("Tick", "Relay.DoHTTP", function()
@@ -91,12 +99,16 @@ concommand.Add("relay_start", function(plr, cmd, args, argStr)
 				-- POST cached messages to relay server
 				HTTP({
 					method = "POST",
-					url = "http://"..relay_connection:GetString(),
+					url = "http://" .. relay_connection:GetString(),
 					body = util.TableToJSON(toPost),
 					type = "application/json",
-					headers = {["Source-Port"] = hostport:GetString()},
-					success = function() posting = false end,
-					failed = function() posting = false end
+					headers = { ["Source-Port"] = hostport:GetString() },
+					success = function()
+						posting = false
+					end,
+					failed = function()
+						posting = false
+					end,
 				})
 				toPost = {}
 			elseif not getting and tickTimer == math.floor(relay_interval:GetInt() / 2) then
@@ -106,36 +118,46 @@ concommand.Add("relay_start", function(plr, cmd, args, argStr)
 				HTTP({
 					success = function(statusCode, content, headers)
 						getting = false
-						if statusCode ~= 200 then return end
+						if statusCode ~= 200 then
+							return
+						end
 
 						JSON = util.JSONToTable(content)
 
-						if JSON["init-info-dirty"] then Relay.UpdateInfo() end
+						if JSON["init-info-dirty"] then
+							Relay.UpdateInfo()
+						end
 
 						for _, msg in pairs(JSON.messages.chat) do
-							print("[Relay | "..msg[4].."] " .. msg[1] .. ": " .. msg[2])
+							print("[Relay | " .. msg[4] .. "] " .. msg[1] .. ": " .. msg[2])
 							local colour = msg[3]
-							colour = Color(bit.rshift(colour, 16), bit.band(bit.rshift(colour, 8), 0xff), bit.band(colour, 0xff))
+							colour = Color(
+								bit.rshift(colour, 16),
+								bit.band(bit.rshift(colour, 8), 0xff),
+								bit.band(colour, 0xff)
+							)
 
 							if hook.Call("Relay.Message", gm, msg[1], msg[2], colour, msg[4], msg[5]) ~= false then
 								net.Start("Relay.NetworkMsg")
-									net.WriteString(msg[1])
-									net.WriteString(msg[2])
-									net.WriteColor(colour)
-									net.WriteString(msg[4])
-									net.WriteString(msg[5])
+								net.WriteString(msg[1])
+								net.WriteString(msg[2])
+								net.WriteColor(colour)
+								net.WriteString(msg[4])
+								net.WriteString(msg[5])
 								net.Broadcast()
 							end
 						end
 
 						for _, command in ipairs(JSON.messages.rcon) do
-							game.ConsoleCommand(command.."\n")
+							game.ConsoleCommand(command .. "\n")
 						end
 					end,
-					failed = function() getting = false end,
+					failed = function()
+						getting = false
+					end,
 					method = "GET",
-					url = "http://"..relay_connection:GetString(),
-					headers = {["Source-Port"] = hostport:GetString()}
+					url = "http://" .. relay_connection:GetString(),
+					headers = { ["Source-Port"] = hostport:GetString() },
 				})
 			end
 		end)
@@ -143,10 +165,10 @@ concommand.Add("relay_start", function(plr, cmd, args, argStr)
 		print("Relay started")
 		HTTP({
 			method = "POST",
-			url = "http://"..relay_connection:GetString(),
+			url = "http://" .. relay_connection:GetString(),
 			body = '{"0":{"type":"custom","body":"Relay client connected!"}}',
 			type = "application/json",
-			headers = {["Source-Port"] = hostport:GetString()}
+			headers = { ["Source-Port"] = hostport:GetString() },
 		})
 		Relay.UpdateInfo()
 	end
@@ -163,39 +185,44 @@ concommand.Add("relay_stop", function(plr, cmd, args, argStr)
 		hook.Remove("Tick", "Relay.DoHTTP")
 
 		print("Relay stopped")
-		cachePost({type="custom", body="Relay client disconnected"})
+		cachePost({ type = "custom", body = "Relay client disconnected" })
 
 		-- POST any remaining messages including the disconnect one
 		HTTP({
 			method = "POST",
-			url = "http://"..relay_connection:GetString(),
+			url = "http://" .. relay_connection:GetString(),
 			body = util.TableToJSON(toPost),
 			type = "application/json",
-			headers = {["Source-Port"] = hostport:GetString()}
+			headers = { ["Source-Port"] = hostport:GetString() },
 		})
 		toPost = {}
 	end
 end)
 
 concommand.Add("rsay", function(plr, cmd, args, argStr)
-	if plr:IsPlayer() then print("Only the server can use this command") end
-	if not toggle then print("Please start the relay with startRelay first"); return end
+	if plr:IsPlayer() then
+		print("Only the server can use this command")
+	end
+	if not toggle then
+		print("Please start the relay with startRelay first")
+		return
+	end
 
-	cachePost({type="custom", body="[CONSOLE]: "..argStr})
+	cachePost({ type = "custom", body = "[CONSOLE]: " .. argStr })
 
 	net.Start("Relay.RSay")
 	net.WriteString(argStr)
 	net.Broadcast()
-	print("Console: "..argStr)
+	print("Console: " .. argStr)
 
 	-- If the server is hibernating then manually POST
 	if not sv_hibernate_think:GetBool() and player.GetCount() == 0 then
 		HTTP({
 			method = "POST",
-			url = "http://"..relay_connection:GetString(),
+			url = "http://" .. relay_connection:GetString(),
 			body = util.TableToJSON(toPost),
 			type = "application/json",
-			headers = {["Source-Port"] = hostport:GetString()}
+			headers = { ["Source-Port"] = hostport:GetString() },
 		})
 		toPost = {}
 	end
